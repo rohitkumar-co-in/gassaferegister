@@ -1,0 +1,10 @@
+{
+  "manifest_version": 3,
+  "name": "Leadomi Gas Safe Collector",
+  "version": "1.1.0",
+  "description": "Collect public Gas Safe results in your current Chrome tab. Export locally as JSON or CSV.",
+  "permissions": ["storage", "activeTab"],
+  "action": {"default_popup": "popup.html", "default_title": "Gas Safe Collector"},
+  "background": {"service_worker": "background.js"},
+  "content_scripts": [{"matches": ["https://www.gassaferegister.co.uk/*", "https://gassaferegister.co.uk/*"], "js": ["parser.js", "content.js"], "run_at": "document_idle"}]
+}

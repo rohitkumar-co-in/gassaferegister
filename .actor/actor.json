@@ -1,0 +1,17 @@
+{
+  "actorSpecification": 1,
+  "name": "gassaferegister",
+  "title": "Gas Safe Register UK Scraper",
+  "description": "Cost-optimized scraper for UK Gas Safe Register. Extracts registered businesses, contact details, engineer names, and appliance qualifications by location/postcode.",
+  "version": "0.0",
+  "meta": {
+    "templateId": "project_playwright_crawler_js"
+  },
+  "dockerfile": "./Dockerfile",
+  "input": "./input_schema.json",
+  "defaultRunOptions": {
+    "build": "latest",
+    "timeoutSecs": 600,
+    "memoryMbytes": 1024
+  }
+}

@@ -1,0 +1,60 @@
+{
+  "title": "Gas Safe Register UK Scraper Input",
+  "type": "object",
+  "schemaVersion": 1,
+  "properties": {
+    "location": {
+      "title": "Search Location (City or Postcode)",
+      "type": "string",
+      "description": "Enter a UK postcode or town/city name to search (e.g., 'Leeds', 'SW1A 1AA', 'Manchester', 'London').",
+      "default": "Leeds",
+      "editor": "textfield"
+    },
+    "serviceType": {
+      "title": "Service Type",
+      "type": "string",
+      "description": "Filter by gas service type (Domestic or Commercial).",
+      "enum": ["Domestic", "Commercial"],
+      "default": "Domestic",
+      "editor": "select"
+    },
+    "maxPages": {
+      "title": "Max Business Result Pages",
+      "type": "integer",
+      "description": "Maximum number of business listing pages to scrape. Keeping this low conserves Apify compute & proxy credits.",
+      "default": 2,
+      "minimum": 1,
+      "maximum": 50
+    },
+    "includeEngineers": {
+      "title": "Collect Engineers & Qualifications",
+      "type": "boolean",
+      "description": "If enabled, visits each business detail page to collect registered engineer names and qualification tables. Disabling this runs much faster and uses fewer requests.",
+      "default": true
+    },
+    "engineerPagesPerBusiness": {
+      "title": "Max Engineer Pages per Business",
+      "type": "integer",
+      "description": "Maximum pages of engineer records to scrape per business. Default is 2 to keep runs lightweight.",
+      "default": 2,
+      "minimum": 1,
+      "maximum": 20
+    },
+    "proxyConfiguration": {
+      "title": "Proxy Configuration",
+      "type": "object",
+      "description": "Select Apify Proxy. UK Residential Proxy is required because gassaferegister.co.uk enforces UK geo-restrictions and Imperva bot protection.",
+      "editor": "proxy",
+      "default": {
+        "useApifyProxy": true,
+        "apifyProxyGroups": [
+          "RESIDENTIAL"
+        ],
+        "apifyProxyCountry": "GB"
+      }
+    }
+  },
+  "required": [
+    "location"
+  ]
+}

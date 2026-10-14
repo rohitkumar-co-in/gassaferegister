@@ -1,0 +1,17 @@
+{
+  "name": "gas-safe-register-uk-scraper",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Cost-optimized Apify Actor for scraping Gas Safe registered businesses, engineers, and qualifications in the UK.",
+  "main": "src/main.js",
+  "scripts": {
+    "start": "node src/main.js"
+  },
+  "dependencies": {
+    "apify": "^3.2.14",
+    "crawlee": "^3.12.2",
+    "playwright": "^1.49.0"
+  },
+  "author": "leadomi.com",
+  "license": "ISC"
+}
