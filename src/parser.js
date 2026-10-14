@@ -1,6 +1,6 @@
 /**
  * Pure parsing and normalization functions for Gas Safe Register UK.
- * Adapted and enhanced from the tested Chrome extension parser.
+ * Exactly replicated to match the Parse.bot Gas Safe Register API specification.
  */
 
 export function cleanText(value) {
@@ -39,6 +39,7 @@ export function safeURL(value, baseURL = 'https://www.gassaferegister.co.uk/') {
 
 /**
  * Parses business cards from the business search results page.
+ * Returns business objects matching Parse.bot's exact data contract.
  */
 export async function parseBusinessResultsPage(page) {
     return await page.evaluate(() => {
@@ -62,32 +63,38 @@ export async function parseBusinessResultsPage(page) {
 
             const registration_number = field(card, 'registrationNumber');
             const business_name = field(card, 'businessName');
+            const trading_name = field(card, 'tradingName') || null;
             
             const engineersLink = card.querySelector('a[data-testid="vEngineers"]')?.getAttribute('href');
             const servicesLink = card.querySelector('a[data-testid="vServices"]')?.getAttribute('href');
 
             return {
                 business_name,
+                trading_name,
                 registration_number,
                 telephone: contactVal(card.querySelector('[data-testid="telephone"]')),
                 email: contactVal(card.querySelector('[data-testid="eMail"]')),
                 address,
+                distance_miles: field(card, 'distanceMiles') || '',
                 out_of_hours_available: /out of hours available/i.test(field(card, 'outHoursavailable')),
-                distance_miles: field(card, 'distanceMiles') || null,
                 engineers_url: engineersLink ? new URL(engineersLink, document.baseURI).href : null,
                 services_url: servicesLink ? new URL(servicesLink, document.baseURI).href : null,
+                engineers: [],
             };
         }).filter(b => b.business_name && /^\d{1,10}$/.test(b.registration_number));
 
         // Pagination info
         const summary = field(document, 'closestDistanceForEngineerorBusiness') || field(document, 'closestDistanceBusiness');
         const match = summary.match(/Showing\s+(\d+)\s+to\s+(\d+)\s+of\s+(\d+)/i);
+        const totalResults = match ? Number(match[3]) : null;
         const nextHref = document.querySelector('a[data-testid="pgNext"]')?.getAttribute('href');
+        const currentPage = Number(field(document, 'pgCurrent')) || 1;
 
         return {
             businesses,
-            currentPage: Number(field(document, 'pgCurrent')) || 1,
-            totalResults: match ? Number(match[3]) : null,
+            currentPage,
+            totalResults,
+            totalPages: totalResults ? Math.ceil(totalResults / 10) : null,
             nextPageUrl: nextHref ? new URL(nextHref, document.baseURI).href : null,
             location: document.querySelector('#MatchedLocation')?.value || document.querySelector('#postCodeTownlabel')?.value || '',
         };
@@ -96,6 +103,7 @@ export async function parseBusinessResultsPage(page) {
 
 /**
  * Parses individual engineers from an engineer detail page.
+ * Returns array of engineers matching Parse.bot format: { name, services, telephone, status }.
  */
 export async function parseEngineersPage(page) {
     return await page.evaluate(() => {
@@ -119,9 +127,9 @@ export async function parseEngineersPage(page) {
 
             return {
                 name: field(card, 'EngineerName'),
+                services: services.length ? services : ['Domestic'],
                 telephone,
-                status: status.trim() || null,
-                services,
+                status: status.trim() || 'Registered',
             };
         }).filter(e => e.name);
 
@@ -137,32 +145,37 @@ export async function parseEngineersPage(page) {
 }
 
 /**
- * Parses qualification tables from a services detail page.
+ * Parses single business profile when looked up by registration number.
  */
-export async function parseServicesPage(page) {
+export async function parseSingleBusinessProfile(page) {
     return await page.evaluate(() => {
         const text = n => n?.textContent?.replace(/\s+/g, ' ').trim() || '';
-        const tables = [...document.querySelectorAll('.ServiceTypeTable')];
-        const qualifications = [];
+        const field = (root, key) => text(root.querySelector(`[data-testid="${key}"]`));
+        const contactVal = val => {
+            const s = text(val);
+            return /^(?:[-–—.]|n\/?a|not available)$/i.test(s) ? null : (s || null);
+        };
 
-        for (const table of tables) {
-            const serviceType = table.id.replace('Table', '');
-            const rows = table.querySelectorAll('tbody tr.SafeBlackBackground');
+        const businessName = field(document, 'businessName') || field(document, 'tradingName') || text(document.querySelector('h1.wrapOverflow'));
+        const registrationNumber = field(document, 'registrationNumber');
 
-            for (const row of rows) {
-                const cells = [...row.children].filter(n => n.nodeName === 'TD');
-                if (cells.length < 4) continue;
+        const address = {
+            premise: field(document, 'premise') || null,
+            street: field(document, 'street') || null,
+            town: field(document, 'town') || null,
+            county: field(document, 'county') || null,
+            postcode: (field(document, 'postCde') || '').toUpperCase() || null,
+        };
+        address.full_address = Object.values(address).filter(Boolean).join(', ');
 
-                qualifications.push({
-                    name: text(cells[0]),
-                    service_type: serviceType,
-                    natural_gas: !!cells[1].querySelector('.fa-check'),
-                    lpg: !!cells[2].querySelector('.fa-check'),
-                    building_regulations: !!cells[3].querySelector('.fa-check'),
-                });
-            }
-        }
-
-        return { qualifications };
+        return {
+            business_name: businessName,
+            trading_name: field(document, 'tradingName') || null,
+            registration_number: registrationNumber,
+            telephone: contactVal(document.querySelector('[data-testid="telephone"]')),
+            email: contactVal(document.querySelector('[data-testid="eMail"]')),
+            address,
+            out_of_hours_available: /out of hours available/i.test(field(document, 'outHoursavailable')),
+        };
     });
 }

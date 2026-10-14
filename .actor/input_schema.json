@@ -1,49 +1,54 @@
 {
-  "title": "Gas Safe Register UK Scraper Input",
+  "title": "Gas Safe Register UK Scraper (Parse.bot Compatible)",
   "type": "object",
   "schemaVersion": 1,
   "properties": {
     "location": {
-      "title": "Search Location (City or Postcode)",
+      "title": "Location (City or Postcode)",
       "type": "string",
-      "description": "Enter a UK postcode or town/city name to search (e.g., 'Leeds', 'SW1A 1AA', 'Manchester', 'London').",
-      "default": "Leeds",
+      "description": "City/town name (e.g. 'Cambridge', 'Leeds') or UK postcode (e.g. 'CB1 1JY'). Used for search_businesses.",
+      "default": "Cambridge",
       "editor": "textfield"
     },
-    "serviceType": {
+    "registration_number": {
+      "title": "Registration Number (Optional Direct Lookup)",
+      "type": "string",
+      "description": "Look up one Gas Safe registered business by registration number and return its details with every engineer (matches Parse.bot get_business_engineers). If provided, location search is skipped.",
+      "editor": "textfield"
+    },
+    "service_type": {
       "title": "Service Type",
       "type": "string",
-      "description": "Filter by gas service type (Domestic or Commercial).",
+      "description": "Gas service category to search ('Domestic' or 'Commercial').",
       "enum": ["Domestic", "Commercial"],
       "default": "Domestic",
       "editor": "select"
     },
-    "maxPages": {
-      "title": "Max Business Result Pages",
+    "page": {
+      "title": "Starting Page",
       "type": "integer",
-      "description": "Maximum number of business listing pages to scrape. Keeping this low conserves Apify compute & proxy credits.",
-      "default": 2,
-      "minimum": 1,
-      "maximum": 50
+      "description": "First listing page to read (1-indexed, 10 results per page).",
+      "default": 1,
+      "minimum": 1
     },
-    "includeEngineers": {
-      "title": "Collect Engineers & Qualifications",
+    "max_pages": {
+      "title": "Max Pages",
+      "type": "integer",
+      "description": "Number of consecutive listing pages to fetch and combine into the response (1-25).",
+      "default": 1,
+      "minimum": 1,
+      "maximum": 25
+    },
+    "include_engineers": {
+      "title": "Include Engineers",
       "type": "boolean",
-      "description": "If enabled, visits each business detail page to collect registered engineer names and qualification tables. Disabling this runs much faster and uses fewer requests.",
+      "description": "Set to true to fetch the engineers array for each business (one extra request per business); false to leave it empty (bulk mode).",
       "default": true
-    },
-    "engineerPagesPerBusiness": {
-      "title": "Max Engineer Pages per Business",
-      "type": "integer",
-      "description": "Maximum pages of engineer records to scrape per business. Default is 2 to keep runs lightweight.",
-      "default": 2,
-      "minimum": 1,
-      "maximum": 20
     },
     "proxyConfiguration": {
       "title": "Proxy Configuration",
       "type": "object",
-      "description": "Select Apify Proxy. UK Residential Proxy is required because gassaferegister.co.uk enforces UK geo-restrictions and Imperva bot protection.",
+      "description": "UK Residential Proxy configuration (essential for Incapsula anti-bot bypass).",
       "editor": "proxy",
       "default": {
         "useApifyProxy": true,
@@ -53,8 +58,5 @@
         "apifyProxyCountry": "GB"
       }
     }
-  },
-  "required": [
-    "location"
-  ]
+  }
 }

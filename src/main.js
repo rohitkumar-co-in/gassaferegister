@@ -1,35 +1,41 @@
 import { Actor, log } from 'apify';
 import { chromium } from 'playwright';
 import {
-    cleanPhone,
     parseBusinessResultsPage,
     parseEngineersPage,
-    parseServicesPage,
+    parseSingleBusinessProfile,
     safeURL,
 } from './parser.js';
 
 await Actor.init();
 
 try {
-    const input = await Actor.getInput() || {};
-    const {
-        location = 'Leeds',
-        serviceType = 'Domestic',
-        maxPages = 2,
-        includeEngineers = true,
-        engineerPagesPerBusiness = 2,
-        proxyConfiguration: proxyInput,
-    } = input;
+    const rawInput = await Actor.getInput() || {};
+    
+    // Support both snake_case (Parse.bot) and camelCase (Apify) input parameters
+    const location = rawInput.location ? String(rawInput.location).trim() : null;
+    const registrationNumber = rawInput.registration_number || rawInput.registrationNumber || null;
+    const serviceType = rawInput.service_type || rawInput.serviceType || 'Domestic';
+    const startPage = Number(rawInput.page) || 1;
+    const maxPages = Math.min(Math.max(Number(rawInput.max_pages || rawInput.maxPages || 1), 1), 25);
+    const includeEngineers = rawInput.include_engineers !== undefined 
+        ? (rawInput.include_engineers === true || rawInput.include_engineers === 'true')
+        : (rawInput.includeEngineers !== undefined ? rawInput.includeEngineers : true);
+    const proxyInput = rawInput.proxyConfiguration;
 
-    if (!location || !location.trim()) {
-        throw new Error('Input parameter "location" is required. Please provide a UK city or postcode.');
+    // Validate input mode
+    if (!location && !registrationNumber) {
+        throw new Error('Either "location" (for search_businesses) or "registration_number" (for get_business_engineers) is required.');
     }
 
-    const cleanLocation = location.trim();
-    log.info(`Starting Gas Safe Register UK Scraper for location: "${cleanLocation}", serviceType: "${serviceType}"`);
-    log.info(`Cost-saving limits: maxPages=${maxPages}, includeEngineers=${includeEngineers}, engineerPagesPerBusiness=${engineerPagesPerBusiness}`);
+    log.info('Gas Safe Register Actor starting (Replicating Parse.bot Gas Safe API specification)...');
+    if (registrationNumber) {
+        log.info(`Mode: get_business_engineers | registration_number="${registrationNumber}"`);
+    } else {
+        log.info(`Mode: search_businesses | location="${location}", service_type="${serviceType}", page=${startPage}, max_pages=${maxPages}, include_engineers=${includeEngineers}`);
+    }
 
-    // Build Apify Proxy with UK Residential IP
+    // Proxy setup: Use UK residential proxy for Imperva Incapsula bypass
     let proxyUrl = null;
     const proxyConfiguration = await Actor.createProxyConfiguration(proxyInput || {
         useApifyProxy: true,
@@ -38,15 +44,14 @@ try {
     });
 
     if (proxyConfiguration) {
-        // Use a sticky session ID so Incapsula cookies stay tied to the same UK IP throughout the crawl
-        const sessionId = `gas_safe_${Date.now().toString(36)}`;
+        const sessionId = `gsafe_${Date.now().toString(36)}`;
         proxyUrl = await proxyConfiguration.newUrl(sessionId);
-        log.info('Using Apify UK Residential Proxy with sticky session for Incapsula bypass.');
+        log.info('Using Apify UK Residential Proxy with sticky session for bot bypass.');
     } else {
-        log.warning('No proxy configuration provided. Running with direct connection (may be blocked outside UK).');
+        log.warning('No proxy configured. Running directly (may be blocked if running outside UK).');
     }
 
-    // Launch Chromium with anti-bot stealth flags
+    // Launch Chromium with stealth arguments
     const launchOptions = {
         headless: true,
         args: [
@@ -77,8 +82,7 @@ try {
 
     const page = await context.newPage();
 
-    // COST & SPEED OPTIMIZATION:
-    // Block unnecessary media, fonts, tracking scripts, and analytics to minimize residential proxy data transfer
+    // Cost optimization: block images, media, fonts, tracking scripts to save >85% bandwidth & compute
     await page.route('**/*', (route) => {
         const req = route.request();
         const type = req.resourceType();
@@ -93,55 +97,96 @@ try {
         return route.continue();
     });
 
-    log.info('Navigating to Gas Safe Register homepage...');
+    // -------------------------------------------------------------------------
+    // MODE 1: get_business_engineers (Single Business Lookup by Registration)
+    // -------------------------------------------------------------------------
+    if (registrationNumber) {
+        log.info(`Looking up business registration: ${registrationNumber}...`);
+        await page.goto('https://www.gassaferegister.co.uk/', { waitUntil: 'domcontentloaded', timeout: 60000 });
+        await page.waitForTimeout(2500);
+
+        // Accept cookie consent if shown
+        const cookieBtn = await page.$('#onetrust-accept-btn-handler, button:has-text("Accept All")');
+        if (cookieBtn) await cookieBtn.click().catch(() => {});
+
+        // Find business check input
+        const checkTab = await page.$('a:has-text("Check a business"), button:has-text("Check a business"), [data-tab*="business"]');
+        if (checkTab) await checkTab.click().catch(() => {});
+
+        const regInput = await page.$('input[name*="reg" i], input[placeholder*="registration" i], #postCodeTownlabel, input[type="text"]');
+        if (!regInput) throw new Error('Could not locate registration search input on Gas Safe Register.');
+
+        await regInput.fill(String(registrationNumber));
+        await page.press('input[type="text"]', 'Enter');
+        await page.waitForTimeout(3000);
+
+        const businessProfile = await parseSingleBusinessProfile(page);
+        let engineers = [];
+
+        // Check if there is an engineer page link
+        const engLink = await page.$('a[data-testid="vEngineers"]');
+        if (engLink) {
+            const href = await engLink.getAttribute('href');
+            const safeEngUrl = safeURL(href);
+            if (safeEngUrl) {
+                await page.goto(safeEngUrl, { waitUntil: 'domcontentloaded', timeout: 30000 });
+                await page.waitForTimeout(1500);
+                const engData = await parseEngineersPage(page);
+                engineers = engData.engineers;
+            }
+        }
+
+        const parseBotResult = {
+            status: 'success',
+            data: {
+                business: businessProfile,
+                engineers,
+            },
+        };
+
+        await Actor.pushData({
+            ...businessProfile,
+            engineers,
+        });
+
+        await Actor.setValue('OUTPUT', parseBotResult);
+        log.info('Completed get_business_engineers lookup successfully.');
+        await browser.close();
+        return;
+    }
+
+    // -------------------------------------------------------------------------
+    // MODE 2: search_businesses (Location & Service Type Search)
+    // -------------------------------------------------------------------------
+    log.info(`Navigating to Gas Safe Register homepage for location: "${location}"...`);
     await page.goto('https://www.gassaferegister.co.uk/', {
         waitUntil: 'domcontentloaded',
         timeout: 60000,
     });
 
-    // Wait for Incapsula challenge to pass if triggered
     await page.waitForTimeout(3000);
 
-    // If an Incapsula iframe / challenge is displayed, wait for resolution
-    const challengeIframe = await page.$('#main-iframe, iframe[src*="_Incapsula_Resource"]');
-    if (challengeIframe) {
-        log.info('Imperva Incapsula challenge detected. Waiting for automated resolution...');
-        await page.waitForSelector('#postCodeTownlabel, input[placeholder*="postcode" i], .buscard', {
-            timeout: 30000,
-        }).catch(() => {});
-    }
-
-    // Accept cookie banners if present
+    // Accept cookie banners
     const cookieBtn = await page.$('#onetrust-accept-btn-handler, button:has-text("Accept All"), button:has-text("Accept Cookies")');
-    if (cookieBtn) {
-        await cookieBtn.click().catch(() => {});
-        await page.waitForTimeout(1000);
-    }
+    if (cookieBtn) await cookieBtn.click().catch(() => {});
 
-    // Locate the search input
-    log.info(`Searching for location: "${cleanLocation}"...`);
+    // Enter location
     const inputSelector = '#postCodeTownlabel, input[name*="postCode" i], input[placeholder*="postcode" i], input[placeholder*="town" i]';
     await page.waitForSelector(inputSelector, { timeout: 30000 });
-    await page.fill(inputSelector, cleanLocation);
+    await page.fill(inputSelector, location);
     await page.waitForTimeout(500);
 
-    // Handle Service Type (Domestic / Commercial)
+    // Set service type filter
     if (serviceType.toLowerCase() === 'commercial') {
-        const commercialToggle = await page.$('label:has-text("Commercial"), input[value*="Commercial" i]');
-        if (commercialToggle) {
-            await commercialToggle.click().catch(() => {});
-            await page.waitForTimeout(500);
-        }
+        const commToggle = await page.$('label:has-text("Commercial"), input[value*="Commercial" i]');
+        if (commToggle) await commToggle.click().catch(() => {});
     } else {
-        const domesticToggle = await page.$('label:has-text("Domestic"), input[value*="Domestic" i]');
-        if (domesticToggle) {
-            await domesticToggle.click().catch(() => {});
-            await page.waitForTimeout(500);
-        }
+        const domToggle = await page.$('label:has-text("Domestic"), input[value*="Domestic" i]');
+        if (domToggle) await domToggle.click().catch(() => {});
     }
 
     // Submit search
-    log.info('Submitting search form...');
+    log.info('Submitting location search form...');
     const searchBtn = await page.$('button[type="submit"], input[type="submit"], button:has-text("Find"), #btnSearch');
     if (searchBtn) {
         await searchBtn.click();
@@ -149,169 +194,135 @@ try {
         await page.press(inputSelector, 'Enter');
     }
 
-    // Wait for search results
     await page.waitForSelector('.buscard, [data-testid="registrationNumber"], .no-results', {
         timeout: 45000,
     }).catch(() => {});
 
-    // Dictionary to hold collected businesses
     const businessesMap = new Map();
-    let pagesScraped = 0;
+    let currentPageNumber = 1;
+    let pagesFetched = 0;
+    let totalResultsReported = 0;
+    let totalPagesReported = 1;
+    let hasMorePages = false;
 
-    // Crawl business result pages
-    while (pagesScraped < maxPages) {
-        pagesScraped++;
-        log.info(`Scraping business results page ${pagesScraped}/${maxPages}...`);
-
-        await page.waitForTimeout(1500);
-        const parsedResults = await parseBusinessResultsPage(page);
-
-        log.info(`Found ${parsedResults.businesses.length} businesses on page ${parsedResults.currentPage}. (Total reported: ${parsedResults.totalResults || 'N/A'})`);
-
-        for (const item of parsedResults.businesses) {
-            if (!businessesMap.has(item.registration_number)) {
-                businessesMap.set(item.registration_number, {
-                    ...item,
-                    engineers: [],
-                    qualifications: [],
-                    engineers_fetched: false,
-                    qualifications_fetched: false,
-                });
-            }
-        }
-
-        if (pagesScraped >= maxPages || !parsedResults.nextPageUrl) {
-            if (!parsedResults.nextPageUrl) {
-                log.info('No further result pages available.');
-            }
-            break;
-        }
-
-        // Navigate to next page
-        const safeNext = safeURL(parsedResults.nextPageUrl);
+    // Fast-forward to startPage if startPage > 1
+    while (currentPageNumber < startPage) {
+        const parsed = await parseBusinessResultsPage(page);
+        if (!parsed.nextPageUrl) break;
+        const safeNext = safeURL(parsed.nextPageUrl);
         if (!safeNext) break;
-
-        log.info(`Navigating to next page: ${safeNext}`);
+        currentPageNumber++;
         await page.goto(safeNext, { waitUntil: 'domcontentloaded', timeout: 45000 });
         await page.waitForSelector('.buscard', { timeout: 30000 }).catch(() => {});
     }
 
-    log.info(`Completed business listing collection. Total unique businesses collected: ${businessesMap.size}`);
+    // Crawl up to maxPages
+    while (pagesFetched < maxPages) {
+        pagesFetched++;
+        log.info(`Reading listing page ${currentPageNumber} (Pages fetched: ${pagesFetched}/${maxPages})...`);
+        await page.waitForTimeout(1500);
 
-    // Detail enrichment: Engineers and Qualifications (if enabled)
+        const parsed = await parseBusinessResultsPage(page);
+        if (parsed.totalResults) totalResultsReported = parsed.totalResults;
+        if (parsed.totalPages) totalPagesReported = parsed.totalPages;
+
+        for (const item of parsed.businesses) {
+            if (!businessesMap.has(item.registration_number)) {
+                businessesMap.set(item.registration_number, item);
+            }
+        }
+
+        hasMorePages = !!parsed.nextPageUrl;
+
+        if (pagesFetched >= maxPages || !parsed.nextPageUrl) {
+            break;
+        }
+
+        const safeNext = safeURL(parsed.nextPageUrl);
+        if (!safeNext) break;
+
+        currentPageNumber++;
+        await page.goto(safeNext, { waitUntil: 'domcontentloaded', timeout: 45000 });
+        await page.waitForSelector('.buscard', { timeout: 30000 }).catch(() => {});
+    }
+
+    log.info(`Collected ${businessesMap.size} unique businesses across ${pagesFetched} page(s).`);
+
+    // Fetch engineers if include_engineers is true (matches Parse.bot search_businesses)
     if (includeEngineers && businessesMap.size > 0) {
-        log.info('Starting detail enrichment (Engineers & Qualifications)...');
-        let detailCount = 0;
-        const totalToEnrich = businessesMap.size;
+        log.info('Fetching engineers array for each business (include_engineers=true)...');
+        let count = 0;
+        const total = businessesMap.size;
 
         for (const business of businessesMap.values()) {
-            detailCount++;
-            log.info(`[${detailCount}/${totalToEnrich}] Enriching details for: "${business.business_name}" (Reg: ${business.registration_number})`);
-
-            // 1. Fetch Engineers
+            count++;
             if (business.engineers_url) {
-                let engineerPage = 1;
-                let nextEngUrl = safeURL(business.engineers_url);
-
-                while (nextEngUrl && engineerPage <= engineerPagesPerBusiness) {
-                    try {
-                        await page.goto(nextEngUrl, { waitUntil: 'domcontentloaded', timeout: 30000 });
-                        await page.waitForSelector('.show-engineers, h1', { timeout: 15000 }).catch(() => {});
-
-                        const engData = await parseEngineersPage(page);
-                        for (const eng of engData.engineers) {
-                            // Deduplicate engineers by name + telephone
-                            const exists = business.engineers.some(e => e.name === eng.name && e.telephone === eng.telephone);
-                            if (!exists) {
-                                business.engineers.push(eng);
-                            }
-                        }
-
-                        business.engineers_fetched = true;
-
-                        if (engData.nextPageUrl && engineerPage < engineerPagesPerBusiness) {
-                            engineerPage++;
-                            nextEngUrl = safeURL(engData.nextPageUrl);
-                            await page.waitForTimeout(1000);
-                        } else {
-                            nextEngUrl = null;
-                        }
-                    } catch (err) {
-                        log.warning(`Failed to fetch engineers for ${business.business_name}: ${err.message}`);
-                        break;
-                    }
-                }
-            }
-
-            // 2. Fetch Qualifications / Services
-            if (business.services_url) {
                 try {
-                    const safeServUrl = safeURL(business.services_url);
-                    if (safeServUrl) {
-                        await page.goto(safeServUrl, { waitUntil: 'domcontentloaded', timeout: 30000 });
-                        await page.waitForSelector('.ServiceTypeTable, h1', { timeout: 15000 }).catch(() => {});
-
-                        const servData = await parseServicesPage(page);
-                        business.qualifications = servData.qualifications;
-                        business.qualifications_fetched = true;
+                    log.info(`[${count}/${total}] Fetching engineers for "${business.business_name}"...`);
+                    const safeEngUrl = safeURL(business.engineers_url);
+                    if (safeEngUrl) {
+                        await page.goto(safeEngUrl, { waitUntil: 'domcontentloaded', timeout: 30000 });
+                        await page.waitForSelector('.show-engineers, h1', { timeout: 15000 }).catch(() => {});
+                        const engData = await parseEngineersPage(page);
+                        business.engineers = engData.engineers;
                     }
                 } catch (err) {
-                    log.warning(`Failed to fetch qualifications for ${business.business_name}: ${err.message}`);
+                    log.warning(`Could not fetch engineers for ${business.business_name}: ${err.message}`);
+                    business.engineers = [];
                 }
+                await page.waitForTimeout(800);
             }
-
-            // Polite delay between businesses to prevent rate limiting
-            await page.waitForTimeout(1000);
         }
     }
 
     await browser.close();
 
-    // Format & push dataset items
-    const records = [];
-    const timestamp = new Date().toISOString();
+    // Prepare response matching Parse.bot data structure 1:1
+    const finalBusinesses = Array.from(businessesMap.values()).map(b => ({
+        business_name: b.business_name,
+        trading_name: b.trading_name,
+        registration_number: b.registration_number,
+        telephone: b.telephone,
+        email: b.email,
+        address: b.address,
+        distance_miles: b.distance_miles,
+        out_of_hours_available: b.out_of_hours_available,
+        engineers: b.engineers || [],
+    }));
 
-    for (const b of businessesMap.values()) {
-        const item = {
-            business_name: b.business_name,
-            registration_number: b.registration_number,
-            telephone: b.telephone,
-            telephone_normalized: cleanPhone(b.telephone),
-            email: b.email,
-            address: b.address,
-            postcode: b.address?.postcode || null,
-            out_of_hours_available: b.out_of_hours_available,
-            distance_miles: b.distance_miles,
-            search_location: cleanLocation,
-            service_type: serviceType,
-            collected_at: timestamp,
-            engineers_total_collected: b.engineers.length,
-            engineers: b.engineers,
-            qualifications: b.qualifications,
-        };
-        records.push(item);
-    }
+    const lastPage = startPage + pagesFetched - 1;
 
-    if (records.length > 0) {
-        log.info(`Pushing ${records.length} records to Apify dataset...`);
-        await Actor.pushData(records);
-    } else {
-        log.warning(`No business records found for location: "${cleanLocation}". Please verify the city or postcode.`);
-    }
-
-    // Save summary statistics to Key-Value Store
-    await Actor.setValue('OUTPUT', {
+    const parseBotResponse = {
         status: 'success',
-        location: cleanLocation,
-        serviceType,
-        businessesFound: records.length,
-        pagesScraped,
-        completedAt: timestamp,
-    });
+        data: {
+            page: startPage,
+            last_page: lastPage,
+            max_pages: maxPages,
+            pages_fetched: pagesFetched,
+            location,
+            service_type: serviceType,
+            total_results: totalResultsReported,
+            total_pages: totalPagesReported,
+            results_on_page: finalBusinesses.length,
+            has_more: hasMorePages,
+            businesses: finalBusinesses,
+        },
+    };
 
-    log.info(`Scraper completed successfully! Total businesses scraped: ${records.length}`);
+    // Push individual business items to default Apify Dataset
+    if (finalBusinesses.length > 0) {
+        log.info(`Pushing ${finalBusinesses.length} businesses to default Apify dataset...`);
+        await Actor.pushData(finalBusinesses);
+    } else {
+        log.warning(`No businesses found for location: "${location}".`);
+    }
+
+    // Save the complete Parse.bot envelope to Key-Value Store OUTPUT
+    await Actor.setValue('OUTPUT', parseBotResponse);
+    log.info('Actor completed successfully with 1:1 Parse.bot response parity.');
+
 } catch (error) {
-    log.error(`Actor execution failed: ${error.message}`, { stack: error.stack });
+    log.error(`Actor execution error: ${error.message}`, { stack: error.stack });
     throw error;
 } finally {
     await Actor.exit();

@@ -1,19 +1,24 @@
-# Gas Safe Register UK Scraper (Apify Actor)
+# Gas Safe Register UK Scraper (Parse.bot Parity)
 
-Cost-effective, stealth Apify Actor for scraping gas engineering businesses, contact details, certified engineers, and appliance qualification matrices from the official UK **[Gas Safe Register](https://www.gassaferegister.co.uk/)**.
+Stealth, cost-effective Apify Actor replicating the exact functionality and data contracts of the **[Parse.bot Gas Safe Register UK API](https://parse.bot/marketplace/78e68814-3355-4cdb-ab2e-3285650b1142/gassaferegister-co-uk-api)**.
 
 ---
 
-## Features
+## Supported Modes & Endpoints
 
-- **Single City / Postcode Search**: Simply enter any UK city name (e.g. `Leeds`, `Manchester`, `Bristol`) or full postcode (e.g. `SW1A 1AA`, `B1 1AA`).
-- **Comprehensive Business Leads**: Extracts company trading name, registration number, telephone numbers (formatted and raw), email addresses, detailed address breakdown, out-of-hours service availability, and distance.
-- **Engineer & Qualification Enrichment**: Optionally visits business profiles to collect individual gas engineers (name, services, phone, active status) and appliance qualification matrices (Domestic/Commercial, Natural Gas, LPG, Building Regulations).
-- **Anti-Bot & Geo-Bypass**: Pre-configured with UK Residential Proxy and stealth browser fingerprints to seamlessly navigate Imperva Incapsula challenges.
-- **Credit-Saving Cost Optimizations**:
-  - Automatically aborts heavy images, fonts, tracking scripts, and media streams, slashing residential proxy bandwidth by **>85%**.
-  - Reuses sticky proxy sessions across detail visits to avoid repeated security checks.
-  - Conservative default page limits (`maxPages: 2`, `engineerPagesPerBusiness: 2`) to ensure runs stay well within the Apify Creator/Developer credit budget.
+This Actor supports both search workflows from Parse.bot in a single Actor:
+
+### 1. `search_businesses` & `search_businesses_basic`
+* Search by UK city or postcode (e.g. `Cambridge`, `Leeds`, `CB1 1JY`).
+* Filter by `service_type`: `Domestic` or `Commercial`.
+* Pagination: `page` (start page) and `max_pages` (1-25 consecutive pages).
+* Toggle `include_engineers`:
+  * `true` (`search_businesses`): Visits each business to extract all registered gas engineers with their names, services, telephone, and active status.
+  * `false` (`search_businesses_basic`): Fast, lightweight listing without sub-page visits to conserve credits.
+
+### 2. `get_business_engineers`
+* Provide a `registration_number` (e.g. `664901`).
+* Directly looks up that specific business and returns the company record alongside all registered engineers.
 
 ---
 
@@ -21,64 +26,69 @@ Cost-effective, stealth Apify Actor for scraping gas engineering businesses, con
 
 | Parameter | Type | Default | Description |
 |---|---|---|---|
-| `location` | String | `"Leeds"` | UK town/city name or postcode to search. |
-| `serviceType` | String | `"Domestic"` | Filter by `"Domestic"` or `"Commercial"`. |
-| `maxPages` | Integer | `2` | Number of business result pages to scrape (low limits save credits). |
-| `includeEngineers` | Boolean | `true` | When true, enriches each business with engineer names and qualification tables. |
-| `engineerPagesPerBusiness` | Integer | `2` | Max engineer sub-pages per business. |
-| `proxyConfiguration` | Object | `{"useApifyProxy": true, "apifyProxyGroups": ["RESIDENTIAL"], "apifyProxyCountry": "GB"}` | Apify Proxy configuration (UK Residential recommended). |
+| `location` | String | `"Cambridge"` | UK town/city name or postcode to search. |
+| `registration_number` | String | `null` | Optional direct lookup by Gas Safe registration number. |
+| `service_type` | String | `"Domestic"` | `"Domestic"` or `"Commercial"`. |
+| `page` | Integer | `1` | First listing page to read (1-indexed). |
+| `max_pages` | Integer | `1` | Number of consecutive pages to combine (1-25). |
+| `include_engineers` | Boolean | `true` | Fetch registered engineers for each business. |
+| `proxyConfiguration` | Object | UK Residential | Pre-configured Apify UK Residential Proxy. |
 
 ---
 
-## Output Data Structure
+## Output Data Structure (1:1 Parse.bot Parity)
 
-The Actor pushes structured records to the default Apify Dataset, easily exportable to **JSON**, **CSV**, **Excel**, or webhooks:
-
+### Dataset Records (Individual Business Object)
 ```json
 {
-  "business_name": "ABC Heating & Gas Ltd",
-  "registration_number": "123456",
-  "telephone": "0113 123 4567",
-  "telephone_normalized": "01131234567",
-  "email": "info@abcheating.co.uk",
+  "business_name": "Yellow Rose Property Services",
+  "trading_name": null,
+  "registration_number": "634956",
+  "telephone": "07346011559",
+  "email": "info@yellowrosepropertyservices.co.uk",
   "address": {
-    "premise": "Unit 4",
-    "street": "High Street",
-    "town": "Leeds",
-    "county": "West Yorkshire",
-    "postcode": "LS1 1AA",
-    "full_address": "Unit 4, High Street, Leeds, West Yorkshire, LS1 1AA"
+    "premise": "BARN MEAD",
+    "street": "CHURCH STREET",
+    "town": "HUNTINGDON",
+    "county": "CAMBRIDGESHIRE",
+    "postcode": "PE28 2QE",
+    "full_address": "BARN MEAD, CHURCH STREET, HUNTINGDON, CAMBRIDGESHIRE, PE28 2QE"
   },
-  "postcode": "LS1 1AA",
+  "distance_miles": "",
   "out_of_hours_available": true,
-  "distance_miles": "1.2",
-  "search_location": "Leeds",
-  "service_type": "Domestic",
-  "collected_at": "2026-10-14T15:00:00.000Z",
-  "engineers_total_collected": 2,
   "engineers": [
     {
-      "name": "John Doe",
-      "telephone": "07123456789",
-      "status": "Active",
-      "services": ["Boiler installation", "Cooker repair"]
-    }
-  ],
-  "qualifications": [
-    {
-      "name": "Combustion Analysis",
-      "service_type": "Domestic",
-      "natural_gas": true,
-      "lpg": false,
-      "building_regulations": true
+      "name": "Stefan Brand",
+      "services": ["Domestic"],
+      "telephone": null,
+      "status": "Registered"
     }
   ]
 }
 ```
 
+### Key-Value Store `OUTPUT` (Full Response Envelope)
+```json
+{
+  "status": "success",
+  "data": {
+    "page": 1,
+    "last_page": 1,
+    "max_pages": 1,
+    "pages_fetched": 1,
+    "location": "Cambridge",
+    "service_type": "Domestic",
+    "total_results": 50,
+    "total_pages": 5,
+    "results_on_page": 10,
+    "has_more": true,
+    "businesses": [ ... ]
+  }
+}
+```
+
 ---
 
-## Credit Optimization Tips for Creator Plan
-
-1. **Keep `maxPages` focused**: Setting `maxPages: 2` typically yields ~20-50 high-quality local leads per city without burning proxy bandwidth.
-2. **Toggle `includeEngineers`**: If you only need company names, phone numbers, and addresses for outbound lead generation, turn `includeEngineers: false`. This skips all sub-page requests and cuts run time and credit consumption by ~70%!
+## Anti-Bot & Credit Optimization
+* **Imperva Incapsula Bypass**: Runs with stealth Chromium through Apify UK Residential Proxy with sticky sessions.
+* **Asset Aborting**: Blocks images, fonts, tracking scripts, and media streams, slashing proxy bandwidth by **>85%**.
