@@ -45,6 +45,12 @@
       "description": "Set to true to fetch the engineers array for each business (one extra request per business); false to leave it empty (bulk mode).",
       "default": true
     },
+    "include_services": {
+      "title": "Include Services / Competencies Matrix",
+      "type": "boolean",
+      "description": "Scrape full domestic & commercial qualifications matrix (Natural Gas, LPG, Building Regulations) for each business.",
+      "default": false
+    },
     "proxyConfiguration": {
       "title": "Proxy Configuration",
       "type": "object",

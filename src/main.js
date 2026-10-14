@@ -3,6 +3,7 @@ import { chromium } from 'playwright';
 import {
     parseBusinessResultsPage,
     parseEngineersPage,
+    parseServicesPage,
     parseSingleBusinessProfile,
     safeURL,
 } from './parser.js';
@@ -20,6 +21,10 @@ await Actor.main(async () => {
         ? (rawInput.include_engineers === true || rawInput.include_engineers === 'true')
         : (rawInput.includeEngineers !== undefined ? rawInput.includeEngineers : true);
     
+    const includeServices = rawInput.include_services !== undefined
+        ? (rawInput.include_services === true || rawInput.include_services === 'true')
+        : (rawInput.includeServices !== undefined ? rawInput.includeServices : (registrationNumber ? true : false));
+    
     // Parse.bot API Key fallback (supports user-provided input, env, or default)
     const parseApiKey = rawInput.parseApiKey || rawInput.parse_api_key || process.env.PARSE_API_KEY || 'pmx_b84a223f7b022da503d9af7a68012d52';
     const proxyInput = rawInput.proxyConfiguration;
@@ -28,8 +33,8 @@ await Actor.main(async () => {
         throw new Error('Either "location" (for search_businesses) or "registration_number" (for get_business_engineers) is required.');
     }
 
-    log.info('Gas Safe Register UK Actor running (1:1 Parse.bot API specification)...');
-    log.info(`Input: ${registrationNumber ? `registration_number="${registrationNumber}" (direct lookup)` : `location="${location || ''}"`}, service_type="${serviceType}", page=${startPage}, max_pages=${maxPages}, include_engineers=${includeEngineers}`);
+    log.info('Gas Safe Register UK Actor running (1:1 Parse.bot API specification + Enriched Matrix)...');
+    log.info(`Input: ${registrationNumber ? `registration_number="${registrationNumber}" (direct lookup)` : `location="${location || ''}"`}, service_type="${serviceType}", page=${startPage}, max_pages=${maxPages}, include_engineers=${includeEngineers}, include_services=${includeServices}`);
 
     // Helper to fetch directly from Parse.bot endpoint (Fast, reliable, zero-credit-drain fallback)
     async function fetchFromParseApi() {
@@ -153,23 +158,44 @@ await Actor.main(async () => {
                     throw new Error(`Business registration profile for "${registrationNumber}" not found on page (Incapsula challenge active or unparsed card).`);
                 }
                 let engineers = [];
+                if (includeEngineers) {
+                    const engHref = businessProfile.engineers_url || (await page.$('a[data-testid="vEngineers"], a[href*="showengineers"]')?.then(el => el ? el.getAttribute('href') : null));
+                    if (engHref) {
+                        const safeEngUrl = safeURL(engHref);
+                        if (safeEngUrl) {
+                            await page.goto(safeEngUrl, { waitUntil: 'domcontentloaded', timeout: 30000 });
+                            await page.waitForTimeout(1500);
+                            const engData = await parseEngineersPage(page);
+                            engineers = engData.engineers;
+                        }
+                    }
+                }
 
-                const engLink = await page.$('a[data-testid="vEngineers"]');
-                if (engLink) {
-                    const href = await engLink.getAttribute('href');
-                    const safeEngUrl = safeURL(href);
-                    if (safeEngUrl) {
-                        await page.goto(safeEngUrl, { waitUntil: 'domcontentloaded', timeout: 30000 });
-                        await page.waitForTimeout(1500);
-                        const engData = await parseEngineersPage(page);
-                        engineers = engData.engineers;
+                let servicesMatrix = null;
+                if (includeServices) {
+                    const servHref = businessProfile.services_url || (await page.$('a[data-testid="vServices"], a[href*="businesscompetencies"]')?.then(el => el ? el.getAttribute('href') : null));
+                    if (servHref) {
+                        const safeServUrl = safeURL(servHref);
+                        if (safeServUrl) {
+                            try {
+                                log.info(`Fetching services / competencies matrix for ${businessProfile.business_name}...`);
+                                await page.goto(safeServUrl, { waitUntil: 'domcontentloaded', timeout: 30000 });
+                                await page.waitForSelector('#DomesticTable, table', { timeout: 15000 }).catch(() => {});
+                                servicesMatrix = await parseServicesPage(page);
+                            } catch (err) {
+                                log.warning(`Could not parse services matrix: ${err.message}`);
+                            }
+                        }
                     }
                 }
 
                 finalResult = {
                     status: 'success',
                     data: {
-                        business: businessProfile,
+                        business: {
+                            ...businessProfile,
+                            ...(servicesMatrix ? { services_matrix: servicesMatrix } : {}),
+                        },
                         engineers,
                     },
                 };
@@ -302,6 +328,25 @@ await Actor.main(async () => {
                     }
                 }
 
+                if (includeServices && businessesMap.size > 0) {
+                    log.info('Fetching services / competencies matrix for each business...');
+                    for (const business of businessesMap.values()) {
+                        if (business.services_url) {
+                            try {
+                                const safeServUrl = safeURL(business.services_url);
+                                if (safeServUrl) {
+                                    await page.goto(safeServUrl, { waitUntil: 'domcontentloaded', timeout: 30000 });
+                                    await page.waitForSelector('#DomesticTable, table', { timeout: 15000 }).catch(() => {});
+                                    business.services_matrix = await parseServicesPage(page);
+                                }
+                            } catch (err) {
+                                business.services_matrix = null;
+                            }
+                            await page.waitForTimeout(600);
+                        }
+                    }
+                }
+
                 const finalBusinesses = Array.from(businessesMap.values()).map(b => ({
                     business_name: b.business_name,
                     trading_name: b.trading_name,
@@ -312,6 +357,7 @@ await Actor.main(async () => {
                     distance_miles: b.distance_miles,
                     out_of_hours_available: b.out_of_hours_available,
                     engineers: b.engineers || [],
+                    ...(b.services_matrix ? { services_matrix: b.services_matrix } : {}),
                 }));
 
                 const lastPage = startPage + pagesFetched - 1;

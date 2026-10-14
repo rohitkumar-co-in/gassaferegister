@@ -103,7 +103,8 @@ export async function parseBusinessResultsPage(page) {
 
 /**
  * Parses individual engineers from an engineer detail page.
- * Returns array of engineers matching Parse.bot format: { name, services, telephone, status }.
+ * Returns array of engineers matching Parse.bot format: { name, services, telephone, status }
+ * plus enriched fields: { licence_number, photo_url, competencies_url }.
  */
 export async function parseEngineersPage(page) {
     return await page.evaluate(() => {
@@ -125,11 +126,40 @@ export async function parseEngineersPage(page) {
                 .map(text)
                 .filter(Boolean);
 
+            // Photo URL & Licence Number
+            const photoImg = card.querySelector('[data-testid="photoId"], [data-testid="photo"] img, img[alt*="Photograph"]');
+            let photoUrl = photoImg?.getAttribute('src') || photoImg?.getAttribute('data-savepage-src') || null;
+            let licenceNumber = null;
+            if (photoUrl) {
+                const licMatch = photoUrl.match(/\/(\d{5,10})(?:$|\?)/);
+                if (licMatch) licenceNumber = licMatch[1];
+                try {
+                    photoUrl = new URL(photoUrl, document.baseURI).href;
+                } catch {}
+            }
+
+            // Direct link to engineer competencies
+            const compBtn = card.querySelector('button[onclick*="competencies"], a[href*="competencies"]');
+            let competenciesUrl = null;
+            if (compBtn) {
+                const onclick = compBtn.getAttribute('onclick') || '';
+                const match = onclick.match(/['"]([^'"]*competencies[^'"]*)['"]/);
+                const rawUrl = match ? match[1] : compBtn.getAttribute('href');
+                if (rawUrl) {
+                    try {
+                        competenciesUrl = new URL(rawUrl, document.baseURI).href;
+                    } catch {}
+                }
+            }
+
             return {
                 name: field(card, 'EngineerName'),
+                licence_number: licenceNumber,
                 services: services.length ? services : ['Domestic'],
                 telephone,
                 status: status.trim() || 'Registered',
+                photo_url: photoUrl,
+                competencies_url: competenciesUrl,
             };
         }).filter(e => e.name);
 
@@ -140,6 +170,53 @@ export async function parseEngineersPage(page) {
             engineers,
             currentPage: currentPg,
             nextPageUrl: nextHref ? new URL(nextHref, document.baseURI).href : null,
+        };
+    });
+}
+
+/**
+ * Parses full competencies and qualifications matrix from a services page.
+ * Returns structured { domestic, commercial } arrays with Natural Gas, LPG, and Building Regs.
+ */
+export async function parseServicesPage(page) {
+    return await page.evaluate(() => {
+        const text = n => n?.textContent?.replace(/\s+/g, ' ').trim() || '';
+
+        const parseTable = (tableEl) => {
+            if (!tableEl) return [];
+            const rows = [...tableEl.querySelectorAll('tbody tr, tr')];
+            const items = [];
+            for (let i = 0; i < rows.length; i++) {
+                const cells = [...rows[i].querySelectorAll('td')];
+                if (cells.length >= 4) {
+                    const serviceName = text(cells[0]);
+                    const hasNaturalGas = !!cells[1].querySelector('.fa-check');
+                    const hasLpg = !!cells[2].querySelector('.fa-check');
+                    const hasBuildingRegs = !!cells[3].querySelector('.fa-check');
+                    if (serviceName) {
+                        items.push({
+                            service: serviceName,
+                            natural_gas: hasNaturalGas,
+                            lpg: hasLpg,
+                            building_regulations: hasBuildingRegs,
+                        });
+                    }
+                }
+            }
+            return items;
+        };
+
+        const domesticEl = document.querySelector('#DomesticTable table') || document.querySelector('#DomesticTable') || document.querySelectorAll('table')[0];
+        const commercialEl = document.querySelector('#CommercialTable table') || document.querySelector('#CommercialTable') || document.querySelectorAll('table')[1];
+
+        const domestic = parseTable(domesticEl);
+        const commercial = parseTable(commercialEl);
+
+        return {
+            domestic,
+            commercial,
+            total_domestic: domestic.length,
+            total_commercial: commercial.length,
         };
     });
 }
@@ -168,6 +245,9 @@ export async function parseSingleBusinessProfile(page) {
         };
         address.full_address = Object.values(address).filter(Boolean).join(', ');
 
+        const engineersLink = document.querySelector('a[data-testid="vEngineers"], a[href*="showengineers"]')?.getAttribute('href');
+        const servicesLink = document.querySelector('a[data-testid="vServices"], a[href*="businesscompetencies"]')?.getAttribute('href');
+
         return {
             business_name: businessName,
             trading_name: field(document, 'tradingName') || null,
@@ -176,6 +256,8 @@ export async function parseSingleBusinessProfile(page) {
             email: contactVal(document.querySelector('[data-testid="eMail"]')),
             address,
             out_of_hours_available: /out of hours available/i.test(field(document, 'outHoursavailable')),
+            engineers_url: engineersLink ? new URL(engineersLink, document.baseURI).href : null,
+            services_url: servicesLink ? new URL(servicesLink, document.baseURI).href : null,
         };
     });
 }

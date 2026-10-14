@@ -31,12 +31,13 @@ This Actor supports both search workflows from Parse.bot in a single Actor:
 | `service_type` | String | `"Domestic"` | `"Domestic"` or `"Commercial"`. |
 | `page` | Integer | `1` | First listing page to read (1-indexed). |
 | `max_pages` | Integer | `1` | Number of consecutive pages to combine (1-25). |
-| `include_engineers` | Boolean | `true` | Fetch registered engineers for each business. |
+| `include_engineers` | Boolean | `true` | Fetch registered engineers with photos, licence IDs, and contact info. |
+| `include_services` | Boolean | `false` | Fetch complete Domestic & Commercial competencies matrix (Natural Gas, LPG, Building Regs). |
 | `proxyConfiguration` | Object | UK Residential | Pre-configured Apify UK Residential Proxy. |
 
 ---
 
-## Output Data Structure (1:1 Parse.bot Parity)
+## Output Data Structure (1:1 Parse.bot Parity + Enriched Competencies)
 
 ### Dataset Records (Individual Business Object)
 ```json
@@ -59,11 +60,37 @@ This Actor supports both search workflows from Parse.bot in a single Actor:
   "engineers": [
     {
       "name": "Stefan Brand",
+      "licence_number": "508103",
       "services": ["Domestic"],
       "telephone": null,
-      "status": "Registered"
+      "status": "Registered",
+      "photo_url": "https://www.gassaferegister.co.uk/photo/3ec2ade8-966f-ec11-8943-000d3a86c5c3/508103",
+      "competencies_url": "https://www.gassaferegister.co.uk/engineerabcompetencies/5960166?ep=..."
     }
-  ]
+  ],
+  "services_matrix": {
+    "domestic": [
+      {
+        "service": "Combustion performance gas analysis",
+        "natural_gas": true,
+        "lpg": true,
+        "building_regulations": false
+      },
+      {
+        "service": "Gas Boiler",
+        "natural_gas": true,
+        "lpg": true,
+        "building_regulations": false
+      },
+      {
+        "service": "Unvented Hot Water storage Cylinders (G3)",
+        "natural_gas": false,
+        "lpg": false,
+        "building_regulations": true
+      }
+    ],
+    "commercial": []
+  }
 }
 ```
 
