@@ -11,8 +11,8 @@ await Actor.main(async () => {
     const rawInput = await Actor.getInput() || {};
     
     // Support both snake_case (Parse.bot) and camelCase (Apify) input parameters
-    const location = rawInput.location ? String(rawInput.location).trim() : null;
     const registrationNumber = rawInput.registration_number || rawInput.registrationNumber || null;
+    const location = registrationNumber ? null : (rawInput.location ? String(rawInput.location).trim() : null);
     const serviceType = rawInput.service_type || rawInput.serviceType || 'Domestic';
     const startPage = Number(rawInput.page) || 1;
     const maxPages = Math.min(Math.max(Number(rawInput.max_pages || rawInput.maxPages || 1), 1), 25);
@@ -29,7 +29,7 @@ await Actor.main(async () => {
     }
 
     log.info('Gas Safe Register UK Actor running (1:1 Parse.bot API specification)...');
-    log.info(`Input: location="${location || ''}", registration_number="${registrationNumber || ''}", service_type="${serviceType}", page=${startPage}, max_pages=${maxPages}, include_engineers=${includeEngineers}`);
+    log.info(`Input: ${registrationNumber ? `registration_number="${registrationNumber}" (direct lookup)` : `location="${location || ''}"`}, service_type="${serviceType}", page=${startPage}, max_pages=${maxPages}, include_engineers=${includeEngineers}`);
 
     // Helper to fetch directly from Parse.bot endpoint (Fast, reliable, zero-credit-drain fallback)
     async function fetchFromParseApi() {
@@ -39,17 +39,24 @@ await Actor.main(async () => {
 
         if (registrationNumber) {
             url = `https://api.parse.bot/scraper/82a3f423-3c12-4a96-adf0-1f9c67dc1389/get_business_engineers?registration_number=${encodeURIComponent(registrationNumber)}`;
+        } else if (!includeEngineers) {
+            url = `https://api.parse.bot/scraper/82a3f423-3c12-4a96-adf0-1f9c67dc1389/search_businesses_basic?location=${encodeURIComponent(location)}&service_type=${encodeURIComponent(serviceType)}&page=${startPage}&max_pages=${maxPages}`;
         } else {
-            url = `https://api.parse.bot/scraper/82a3f423-3c12-4a96-adf0-1f9c67dc1389/search_businesses?location=${encodeURIComponent(location)}&service_type=${encodeURIComponent(serviceType)}&page=${startPage}&max_pages=${maxPages}&include_engineers=${includeEngineers}`;
+            url = `https://api.parse.bot/scraper/82a3f423-3c12-4a96-adf0-1f9c67dc1389/search_businesses?location=${encodeURIComponent(location)}&service_type=${encodeURIComponent(serviceType)}&page=${startPage}&max_pages=${maxPages}&include_engineers=true`;
         }
 
         const resp = await fetch(url, { headers });
         if (!resp.ok) {
             const errText = await resp.text().catch(() => '');
-            throw new Error(`Parse.bot API returned status ${resp.status}: ${errText}`);
+            throw new Error(`Parse.bot API returned status ${resp.status}: ${errText.slice(0, 200)}`);
         }
 
-        return await resp.json();
+        const text = await resp.text();
+        try {
+            return JSON.parse(text);
+        } catch (e) {
+            throw new Error(`Parse.bot API response could not be parsed as JSON: ${text.slice(0, 200)}`);
+        }
     }
 
     // Try direct Playwright crawl first, or fall back seamlessly if Incapsula challenges
@@ -142,6 +149,9 @@ await Actor.main(async () => {
                 await page.waitForTimeout(3000);
 
                 const businessProfile = await parseSingleBusinessProfile(page);
+                if (!businessProfile?.business_name || !businessProfile?.registration_number) {
+                    throw new Error(`Business registration profile for "${registrationNumber}" not found on page (Incapsula challenge active or unparsed card).`);
+                }
                 let engineers = [];
 
                 const engLink = await page.$('a[data-testid="vEngineers"]');
