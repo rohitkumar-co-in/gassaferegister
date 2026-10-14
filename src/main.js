@@ -168,10 +168,25 @@ await Actor.main(async () => {
         const cookieBtn = await page.$('#onetrust-accept-btn-handler, button:has-text("Accept All"), button:has-text("Accept Cookies")');
         if (cookieBtn) await cookieBtn.click().catch(() => {});
 
-        // Enter location
+        // Enter location and handle autocomplete dropdown
         const inputSelector = '#postCodeTownlabel, input[name*="postCode" i], input[placeholder*="postcode" i], input[placeholder*="town" i]';
         await page.waitForSelector(inputSelector, { timeout: 30000 });
-        await page.fill(inputSelector, location);
+        await page.click(inputSelector);
+        await page.fill(inputSelector, '');
+        // Type with delay to trigger jQuery UI autocomplete
+        await page.type(inputSelector, location, { delay: 80 });
+        await page.waitForTimeout(1500);
+
+        // Select matching autocomplete item if present
+        const suggestion = await page.$('.ui-autocomplete li, .ui-menu-item, [role="option"], .tt-suggestion');
+        if (suggestion) {
+            log.info('Selected autocomplete location suggestion.');
+            await suggestion.click().catch(() => {});
+        } else {
+            await page.keyboard.press('ArrowDown').catch(() => {});
+            await page.waitForTimeout(200);
+            await page.keyboard.press('Enter').catch(() => {});
+        }
         await page.waitForTimeout(500);
 
         // Set service type filter
@@ -183,17 +198,23 @@ await Actor.main(async () => {
             if (domToggle) await domToggle.click().catch(() => {});
         }
 
-        // Submit search
+        // Submit search with navigation wait
         log.info('Submitting location search form...');
-        const searchBtn = await page.$('button[type="submit"], input[type="submit"], button:has-text("Find"), #btnSearch');
+        const searchBtn = await page.$('button[type="submit"], input[type="submit"], button:has-text("Find"), #btnSearch, .btn-find');
         if (searchBtn) {
-            await searchBtn.click();
+            await Promise.all([
+                page.waitForNavigation({ timeout: 45000, waitUntil: 'domcontentloaded' }).catch(() => {}),
+                searchBtn.click(),
+            ]);
         } else {
-            await page.press(inputSelector, 'Enter');
+            await Promise.all([
+                page.waitForNavigation({ timeout: 45000, waitUntil: 'domcontentloaded' }).catch(() => {}),
+                page.press(inputSelector, 'Enter'),
+            ]);
         }
 
         await page.waitForSelector('.buscard, [data-testid="registrationNumber"], .no-results', {
-            timeout: 45000,
+            timeout: 30000,
         }).catch(() => {});
 
         const businessesMap = new Map();
