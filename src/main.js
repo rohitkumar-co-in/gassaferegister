@@ -168,28 +168,7 @@ await Actor.main(async () => {
         const cookieBtn = await page.$('#onetrust-accept-btn-handler, button:has-text("Accept All"), button:has-text("Accept Cookies")');
         if (cookieBtn) await cookieBtn.click().catch(() => {});
 
-        // Enter location and handle autocomplete dropdown
-        const inputSelector = '#postCodeTownlabel, input[name*="postCode" i], input[placeholder*="postcode" i], input[placeholder*="town" i]';
-        await page.waitForSelector(inputSelector, { timeout: 30000 });
-        await page.click(inputSelector);
-        await page.fill(inputSelector, '');
-        // Type with delay to trigger jQuery UI autocomplete
-        await page.type(inputSelector, location, { delay: 80 });
-        await page.waitForTimeout(1500);
-
-        // Select matching autocomplete item if present
-        const suggestion = await page.$('.ui-autocomplete li, .ui-menu-item, [role="option"], .tt-suggestion');
-        if (suggestion) {
-            log.info('Selected autocomplete location suggestion.');
-            await suggestion.click().catch(() => {});
-        } else {
-            await page.keyboard.press('ArrowDown').catch(() => {});
-            await page.waitForTimeout(200);
-            await page.keyboard.press('Enter').catch(() => {});
-        }
-        await page.waitForTimeout(500);
-
-        // Set service type filter
+        // 1. Set service type filter FIRST before submitting search
         if (serviceType.toLowerCase() === 'commercial') {
             const commToggle = await page.$('label:has-text("Commercial"), input[value*="Commercial" i]');
             if (commToggle) await commToggle.click().catch(() => {});
@@ -197,19 +176,36 @@ await Actor.main(async () => {
             const domToggle = await page.$('label:has-text("Domestic"), input[value*="Domestic" i]');
             if (domToggle) await domToggle.click().catch(() => {});
         }
+        await page.waitForTimeout(500);
 
-        // Submit search with navigation wait
+        // 2. Enter location and handle autocomplete dropdown
+        const inputSelector = '#postCodeTownlabel, input[name*="postCode" i], input[placeholder*="postcode" i], input[placeholder*="town" i]';
+        await page.waitForSelector(inputSelector, { timeout: 30000 });
+        await page.click(inputSelector);
+        await page.fill(inputSelector, '');
+        await page.type(inputSelector, location, { delay: 60 });
+        await page.waitForTimeout(1500);
+
+        // Select matching autocomplete item if present
+        const suggestion = await page.$('.ui-autocomplete li, .ui-menu-item, [role="option"], .tt-suggestion');
+        if (suggestion) {
+            log.info('Selected autocomplete location suggestion.');
+            await suggestion.click().catch(() => {});
+            await page.waitForTimeout(500);
+        }
+
+        // 3. Submit search with navigation wait
         log.info('Submitting location search form...');
         const searchBtn = await page.$('button[type="submit"], input[type="submit"], button:has-text("Find"), #btnSearch, .btn-find');
         if (searchBtn) {
             await Promise.all([
                 page.waitForNavigation({ timeout: 45000, waitUntil: 'domcontentloaded' }).catch(() => {}),
-                searchBtn.click(),
+                searchBtn.click().catch(() => {}),
             ]);
         } else {
             await Promise.all([
                 page.waitForNavigation({ timeout: 45000, waitUntil: 'domcontentloaded' }).catch(() => {}),
-                page.press(inputSelector, 'Enter'),
+                page.press(inputSelector, 'Enter').catch(() => {}),
             ]);
         }
 
