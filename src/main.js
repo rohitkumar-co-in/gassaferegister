@@ -12,8 +12,13 @@ await Actor.main(async () => {
     const rawInput = await Actor.getInput() || {};
     
     // Support both snake_case (Parse.bot) and camelCase (Apify) input parameters
-    const registrationNumber = rawInput.registration_number || rawInput.registrationNumber || null;
-    const location = registrationNumber ? null : (rawInput.location ? String(rawInput.location).trim() : null);
+    const rawReg = rawInput.registration_number ?? rawInput.registrationNumber;
+    const registrationNumber = rawReg !== undefined && rawReg !== null && String(rawReg).trim() !== ''
+        ? String(rawReg).trim()
+        : null;
+
+    const rawLoc = rawInput.location;
+    const location = registrationNumber ? null : (rawLoc !== undefined && rawLoc !== null && String(rawLoc).trim() !== '' ? String(rawLoc).trim() : null);
     const serviceType = rawInput.service_type || rawInput.serviceType || 'Domestic';
     const startPage = Number(rawInput.page) || 1;
     const maxPages = Math.min(Math.max(Number(rawInput.max_pages || rawInput.maxPages || 1), 1), 25);
@@ -53,6 +58,41 @@ await Actor.main(async () => {
         const resp = await fetch(url, { headers });
         if (!resp.ok) {
             const errText = await resp.text().catch(() => '');
+
+            // 1. Gracefully handle locations with 0 results
+            if (errText.includes('did not contain business cards') || errText.includes('no-results')) {
+                log.info(`No registered gas businesses found for location: "${location}".`);
+                return {
+                    status: 'success',
+                    data: {
+                        page: startPage,
+                        last_page: startPage,
+                        max_pages: maxPages,
+                        pages_fetched: 1,
+                        location: location || '',
+                        service_type: serviceType,
+                        total_results: 0,
+                        total_pages: 0,
+                        results_on_page: 0,
+                        has_more: false,
+                        businesses: [],
+                    },
+                };
+            }
+
+            // 2. Gracefully handle non-existent registration numbers
+            if (errText.includes('not found') || errText.includes('input_not_found') || resp.status === 422) {
+                log.info(`Business with registration number "${registrationNumber}" was not found on Gas Safe Register.`);
+                return {
+                    status: 'success',
+                    data: {
+                        business: null,
+                        engineers: [],
+                        message: `Business with registration number "${registrationNumber}" not found on Gas Safe Register.`,
+                    },
+                };
+            }
+
             throw new Error(`Parse.bot API returned status ${resp.status}: ${errText.slice(0, 200)}`);
         }
 
