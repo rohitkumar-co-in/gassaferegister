@@ -1,11 +1,15 @@
 export interface Input {
+    operation?: 'searchBusinesses' | 'searchBusinessesBasic' | 'getBusinessEngineers' | 'search_businesses' | 'search_businesses_basic' | 'get_business_engineers';
     mode?: 'offlineTest' | 'probe' | 'scrape';
     location?: string;
+    registrationNumber?: string;
+    registration_number?: string;
     locations?: string[];
     locationCounty?: string;
     searchMethod?: 'siteUi' | 'nativeForm' | 'keyboard' | 'validatedForm';
     page?: number;
     maxPages?: number;
+    max_pages?: number;
     maxResults?: number;
     includeEngineers?: boolean;
     includeQualifications?: boolean;
@@ -13,6 +17,8 @@ export interface Input {
     maxEngineersPerBusiness?: number;
     requestDelayMillis?: number;
     serviceType?: 'Domestic' | 'Commercial';
+    service_type?: 'Domestic' | 'Commercial';
+    include_engineers?: boolean | 'true' | 'false';
     useUkResidentialProxy?: boolean;
     browserProfile?: 'plainHeadless' | 'crawleeChrome' | 'unblockerHttp' | 'chromeHeaded' | 'chromeHeadless' | 'chromiumHeaded' | 'camoufoxHeaded' | 'patchrightHeaded';
     proxyCountry?: 'GB' | 'AUTO';
@@ -25,14 +31,41 @@ export interface Input {
     maxTransferMegabytes?: number;
 }
 export function validateInput(raw: Input) {
+    const operationAliases = { search_businesses: 'searchBusinesses', search_businesses_basic: 'searchBusinessesBasic',
+        get_business_engineers: 'getBusinessEngineers' } as const;
+    const operation = raw.operation ? operationAliases[raw.operation as keyof typeof operationAliases] ?? raw.operation : undefined;
+    let parsedIncludeEngineers: boolean | undefined;
+    if (raw.include_engineers === 'true') parsedIncludeEngineers = true;
+    else if (raw.include_engineers === 'false') parsedIncludeEngineers = false;
+    else if (typeof raw.include_engineers === 'boolean') parsedIncludeEngineers = raw.include_engineers;
+    const normalized: Input = { ...raw };
+    if (operation) normalized.operation = operation;
+    const registrationNumber = raw.registration_number ?? raw.registrationNumber;
+    const serviceType = raw.service_type ?? raw.serviceType;
+    const maxPages = raw.max_pages ?? raw.maxPages;
+    const maxResults = raw.maxResults ?? (raw.max_pages ? Math.min(Number(raw.max_pages) * 10, 250) : undefined);
+    const includeEngineers = parsedIncludeEngineers ?? raw.includeEngineers;
+    if (registrationNumber !== undefined) normalized.registrationNumber = registrationNumber;
+    if (serviceType !== undefined) normalized.serviceType = serviceType;
+    if (maxPages !== undefined) normalized.maxPages = maxPages;
+    if (maxResults !== undefined) normalized.maxResults = maxResults;
+    if (includeEngineers !== undefined) normalized.includeEngineers = includeEngineers;
     const input = { mode: 'offlineTest', location: 'CB1 1JY', serviceType: 'Domestic', useUkResidentialProxy: false,
         browserProfile: 'camoufoxHeaded', proxyCountry: 'GB', proxyService: 'residential', allowUnblockerCertificateException: false,
         maxRuntimeSeconds: 90, maxNetworkRequests: 80, loadPageAssets: false, settleSeconds: 0, maxTransferMegabytes: 5,
-        locations: [], locationCounty: '', searchMethod: 'siteUi', page: 1, maxPages: 1, maxResults: 10, includeEngineers: true,
-        includeQualifications: true, maxEngineerPages: 2, maxEngineersPerBusiness: 10, requestDelayMillis: 1000,
-        ...raw } as Required<Input>;
+        operation: 'searchBusinesses', registrationNumber: '', locations: [], locationCounty: '', searchMethod: 'siteUi', page: 1, maxPages: 1, maxResults: 10, includeEngineers: true,
+        includeQualifications: true, maxEngineerPages: 10, maxEngineersPerBusiness: 100, requestDelayMillis: 1000,
+        ...normalized } as Required<Input>;
     if (!['offlineTest', 'probe', 'scrape'].includes(input.mode)) throw new Error('Invalid mode');
-    if (typeof input.location !== 'string' || !input.location.trim() || input.location.length > 120) throw new Error('Invalid location');
+    if (!['searchBusinesses', 'searchBusinessesBasic', 'getBusinessEngineers'].includes(input.operation)) throw new Error('Invalid operation');
+    if (input.operation !== 'getBusinessEngineers' && (typeof input.location !== 'string' || !input.location.trim() || input.location.length > 120)) throw new Error('Invalid location');
+    if (input.operation === 'getBusinessEngineers' && !/^\d{1,12}$/.test(input.registrationNumber)) throw new Error('Invalid registrationNumber');
+    if (input.operation === 'searchBusinessesBasic') { input.includeEngineers = false; input.includeQualifications = false; }
+    if (input.operation === 'getBusinessEngineers') {
+        input.includeEngineers = true; input.maxResults = 1; input.page = 1; input.maxPages = 1;
+        input.maxEngineerPages = Math.max(input.maxEngineerPages, 10);
+        input.maxEngineersPerBusiness = Math.max(input.maxEngineersPerBusiness, 100);
+    }
     if (!['Domestic', 'Commercial'].includes(input.serviceType)) throw new Error('Invalid serviceType');
     if (typeof input.useUkResidentialProxy !== 'boolean') throw new Error('Invalid proxy setting');
     if (!['plainHeadless', 'crawleeChrome', 'unblockerHttp', 'chromeHeaded', 'chromeHeadless', 'chromiumHeaded', 'camoufoxHeaded', 'patchrightHeaded'].includes(input.browserProfile)) throw new Error('Invalid browserProfile');

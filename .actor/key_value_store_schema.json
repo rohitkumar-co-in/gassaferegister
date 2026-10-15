@@ -37,6 +37,13 @@
         "application/json"
       ]
     },
+    "apiOutput": {
+      "title": "API response envelope",
+      "key": "OUTPUT",
+      "contentTypes": [
+        "application/json"
+      ]
+    },
     "state": {
       "title": "Resume state",
       "key": "STATE",

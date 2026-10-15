@@ -6,28 +6,13 @@ Search the public Gas Safe Register by UK town or postcode. Export canonical bus
 
 ## Quick start
 
-For local regression, `offlineTest` uses clearly labelled synthetic fixtures and makes no source or proxy requests. The Apify input form defaults to one bounded live search:
+For local regression, `offlineTest` uses clearly labelled synthetic fixtures and makes no source or proxy requests. The public input form asks for a town or postcode, service type, and maximum number of unique businesses. Listing depth, engineer and qualification enrichment, navigation pacing, browser, and proxy settings use managed defaults so users do not need to tune implementation details.
 
 ```json
 {
-  "mode": "scrape",
   "location": "CB1 1JY",
-  "browserProfile": "patchrightHeaded",
-  "useUkResidentialProxy": true,
-  "proxyService": "residential",
-  "proxyCountry": "GB",
-  "page": 1,
-  "maxPages": 1,
-  "maxResults": 1,
-  "includeEngineers": true,
-  "includeQualifications": true,
-  "maxEngineerPages": 1,
-  "maxEngineersPerBusiness": 1,
-  "maxRuntimeSeconds": 120,
-  "maxNetworkRequests": 300,
-  "maxTransferMegabytes": 10,
-  "loadPageAssets": false,
-  "settleSeconds": 5
+  "serviceType": "Domestic",
+  "maxResults": 10
 }
 ```
 
@@ -36,24 +21,18 @@ The Store prefill uses bounded live settings and requests Apify's GB residential
 ## Inputs
 
 - `location`: one UK town or postcode; default `CB1 1JY`.
-- `locations`: optional array of up to ten towns/postcodes; overrides `location`. All locations share `maxResults` and resource budgets.
-- `searchMethod`: siteUi (default) uses the search button; keyboard presses Enter; validatedForm sends the observed `/tpv` AJAX validation request with the current in-browser form token and then submits normally; nativeForm posts the public form without client-side AJAX validation. Server validation and access controls still apply.
-- `locationCounty`: exact county label when matching towns differ. Duplicate identical labels are resolved to the first identical match. Different towns are never selected silently.
-- `serviceType`: Domestic or Commercial, default Domestic.
-- `page`: first listing page, default 1. `maxPages`: consecutive pages per location, 1–25, default 1.
-- `maxResults`: global unique business cap, 1–250, default 1. Increase for larger runs.
-- `includeEngineers` and `includeQualifications`: default true. Qualifications require engineer enrichment.
-- `maxEngineerPages`: default 1, maximum 10. `maxEngineersPerBusiness`: default 1, maximum 100. Increase for broader per-business coverage.
-- `browserProfile`: browser implementation used for source requests. The prefilled experimental Patchright profile succeeded in one private cloud run; this is not evidence that new users will have access. `unblockerHttp` is diagnostic only and cannot run full scraping.
-- `useUkResidentialProxy`: enables the selected proxy service; legacy field name retained. Default false.
-- `proxyService`: residential or unblocker. `proxyCountry`: GB or AUTO. AUTO may use a non-UK route. Unblocker has no sticky sessions.
-- `maxRuntimeSeconds`: 15–180, default 120. Platform timeout is an additional safeguard.
-- `maxNetworkRequests`: 10–300, default 80; counts browser requests as well as navigations. Higher settings can increase runtime and proxy bandwidth; the 300-request maximum is a resource ceiling, not a billing cap.
-- `maxTransferMegabytes`: 1–10, default 10. Completed-response measurement is best effort; in-flight data can overshoot.
-- `requestDelayMillis`: 500–10000, default 1000; one browser/page and sequential navigations.
-- `loadPageAssets`: default false. Enable for compatibility testing; costs can increase.
-- `settleSeconds`: 0–10, default 5; initial homepage JavaScript settling time.
-- `allowUnblockerCertificateException`: default false, optional isolated source-host-only diagnostic exception. Never enables a global TLS bypass; unnecessary for normal residential requests.
+- `serviceType`: Domestic or Commercial; default Domestic.
+- `maxResults`: maximum unique business records, 1–250; default 10. Listing-page, engineer-enrichment, pacing, browser, proxy, and resource-limit settings use managed defaults and are hidden from the standard input form.
+
+### API operations
+
+The standard Console form stays simple. API clients can set the hidden `operation` field to use all three API workflows:
+
+- `searchBusinesses`: search a town/postcode, follow `page` and `maxPages` pagination limits, and include available engineer and qualification data.
+- `searchBusinessesBasic`: return businesses without visiting engineer pages. `maxPages` is accepted and `maxResults` defaults to up to ten rows per requested page, capped at 250.
+- `getBusinessEngineers`: set `registrationNumber` (or Parse.bot-compatible `registration_number`) to return one business and its engineer/qualification data.
+
+Snake-case Parse.bot field names are accepted for `service_type`, `max_pages`, `include_engineers`, and the three operation names. Each business is written as a dataset item. `OUTPUT` in the default key-value store contains the response envelope and pagination metadata (`total_results`, `total_pages`, `pages_fetched`, `last_page`, and `has_more`). Use the Apify API to read the dataset and `OUTPUT` record after a run.
 
 ## Output
 

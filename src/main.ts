@@ -12,7 +12,7 @@ import { httpProbe } from './http-probe.js';
 await Actor.init();
 const metrics: BrowserMetrics = { network_requests: 0, transferred_bytes: 0, browser_user_agent: '', limit: null };
 const summary = { status: 'starting', mode: '', business_count: 0, coverage: 'bounded_randomized_results',
-    locations: [] as LocationResult[], error: null as string | null, retry_count: 0, ...metrics, started_at: new Date().toISOString() };
+    operation: '', locations: [] as LocationResult[], error: null as string | null, retry_count: 0, ...metrics, started_at: new Date().toISOString() };
 let session: Awaited<ReturnType<typeof createBrowserSession>> | undefined;
 let records: Business[] = [];
 let inputHash = '';
@@ -29,6 +29,7 @@ Actor.on('aborting', async () => {
 try {
     const input = validateInput((await Actor.getInput<Input>()) ?? {});
     summary.mode = input.mode;
+    summary.operation = input.operation;
     const charging = Actor.getChargingManager();
     const itemEvent = 'apify-default-dataset-item';
     const pricing = charging.getPricingInfo();
@@ -52,6 +53,7 @@ try {
         const fixture = async (name: string) => readFile(new URL(`../fixtures/${name}`, import.meta.url), 'utf8');
         source = {
             async search() { return { html: await fixture('businesses.html'), url: 'https://www.gassaferegister.co.uk/findbusinessresults?Page=1' }; },
+            async lookup() { return { html: await fixture('business-profile.html'), url: 'https://www.gassaferegister.co.uk/findbusinessresults?registration=000001' }; },
             async visit(url) {
                 const path = new URL(url).pathname;
                 let name = 'businesses-page2.html';
@@ -94,7 +96,16 @@ try {
     summary.status = getRunStatus(result.locations, records.length, metrics.limit);
     summary.error = metrics.limit ?? result.locations.find((location) => location.error)?.error ?? null;
     if (summary.status !== 'succeeded') await session?.diagnose().catch(() => { /* Diagnostics must not mask source failures. */ });
-    await Actor.setValue('RESULTS', { status: summary.status, coverage: summary.coverage, locations: summary.locations,
+    const location = result.locations[0];
+    const apiData = { page: location?.page ?? input.page, has_more: location?.has_more ?? false,
+        location: input.operation === 'getBusinessEngineers' ? input.registrationNumber : input.location,
+        last_page: location?.last_page, max_pages: location?.max_pages ?? input.maxPages,
+        businesses: records, total_pages: location?.total_pages, service_type: input.serviceType,
+        pages_fetched: location?.pages_fetched ?? 0, total_results: location?.total_results,
+        results_on_page: records.length, business: records[0] ?? null, engineers: records[0]?.engineers ?? [] };
+    await Actor.setValue('OUTPUT', { status: summary.status === 'succeeded' ? 'success' : summary.status,
+        operation: input.operation, data: apiData, error: summary.error });
+    await Actor.setValue('RESULTS', { status: summary.status, operation: input.operation, coverage: summary.coverage, locations: summary.locations,
         businesses: records, unique_businesses: records.length, source_order: 'randomized', completeness_guaranteed: false });
     log.info('Scrape finished', { status: summary.status, businesses: records.length, requests: metrics.network_requests });
 } catch (error) {
@@ -104,6 +115,8 @@ try {
     await session?.diagnose().catch(() => { /* Diagnostics must not mask source failures. */ });
     await Actor.setValue('RESULTS', { status: summary.status, error: summary.error, businesses: records, locations: summary.locations,
         unique_businesses: records.length, completeness_guaranteed: false });
+    await Actor.setValue('OUTPUT', { status: summary.status, operation: summary.operation, error: summary.error,
+        data: { businesses: records, business: records[0] ?? null, engineers: records[0]?.engineers ?? [], locations: summary.locations } });
 } finally {
     await session?.close();
     await persist();

@@ -6,6 +6,7 @@ import { officialUrl, parseBusinesses } from './parser.js';
 export interface SourcePage { html: string; url: string }
 export interface SourceSession {
     search(location: string, county: string): Promise<SourcePage>;
+    lookup?(registrationNumber: string): Promise<SourcePage>;
     visit(url: string): Promise<SourcePage>;
 }
 const accessFailure = (error: string) => /BLOCKED|LIMIT|TRANSPORT|DIALOG|SOURCE_VALIDATION_HTTP_(?:403|429)/.test(error);
@@ -76,14 +77,16 @@ export async function crawl(session: SourceSession, input: Required<Input>, hook
     const seen = new Set(records.map((record) => record.registration_number));
     const locations: LocationResult[] = [];
     let fatal = false;
-    for (const location of [...new Set(input.locations.length ? input.locations : [input.location])]) {
+    const lookup = input.operation === 'getBusinessEngineers';
+    if (lookup && !session.lookup) throw new Error('Registration-number lookup is unavailable in this source session');
+    for (const location of lookup ? [input.registrationNumber] : [...new Set(input.locations.length ? input.locations : [input.location])]) {
         if (records.length >= input.maxResults || fatal) break;
         const info: LocationResult = { location, page: input.page, last_page: null, max_pages: input.maxPages,
             pages_fetched: 0, total_results: null, total_pages: null, has_more: true, unique_results: 0,
             duplicates_skipped: 0, pagination_exhausted: false, status: 'running', error: null };
         locations.push(info);
         try {
-            let current = await session.search(location, input.locationCounty);
+            let current = lookup ? await session.lookup!(input.registrationNumber) : await session.search(location, input.locationCounty);
             if (input.page !== 1) {
                 const first = parseBusinesses(current.html);
                 if (first.total_results !== null && input.page > Math.max(1, Math.ceil(first.total_results / 10))) throw new Error('SOURCE_PAGE_OUT_OF_RANGE');

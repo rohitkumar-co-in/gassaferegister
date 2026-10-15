@@ -151,6 +151,36 @@ export async function createBrowserSession(input: Required<Input>, liveMetrics: 
             await check();
         };
         return {
+            async lookup(registrationNumber) {
+                await throttle();
+                try {
+                    await page!.goto(BASE, { waitUntil: 'domcontentloaded' });
+                    if (input.settleSeconds) await new Promise((resolve) => { setTimeout(resolve, input.settleSeconds * 1000); });
+                    await check();
+                    const checkBusiness = page!.getByRole('link', { name: /check (?:a )?business/i })
+                        .or(page!.getByRole('button', { name: /check (?:a )?business/i }))
+                        .or(page!.getByRole('tab', { name: /check (?:a )?business/i })).first();
+                    if (await checkBusiness.count() && await checkBusiness.isVisible()) await checkBusiness.click();
+                    const registrationField = page!.locator('input[name*="reg" i],input[id*="reg" i],input[placeholder*="registration" i],#postCodeTownlabel,#WidgetSearchTerm').filter({ visible: true }).first();
+                    if (!await registrationField.count()) throw new Error('SOURCE_REGISTRATION_FORM_NOT_FOUND');
+                    await registrationField.fill(registrationNumber);
+                    if (await registrationField.inputValue() !== registrationNumber) throw new Error('SOURCE_REGISTRATION_VALUE_NOT_SET');
+                    const form = registrationField.locator('xpath=ancestor::form[1]');
+                    const submit = form.locator('button[type="submit"],input[type="submit"]').first();
+                    await Promise.all([
+                        page!.waitForFunction(() => Boolean(document.querySelector('.buscard,[data-testid="registrationNumber"]'))
+                            || /no (?:registered )?(?:business|results|matches)|registration number.{0,30}(?:not found|invalid)/i.test(document.body.innerText), undefined, { timeout: 15000 }),
+                        await submit.count() && await submit.isVisible() ? submit.click() : registrationField.press('Enter'),
+                    ]);
+                    await check();
+                    return await snapshot();
+                } catch (error) {
+                    if (metrics.limit) throw new Error(metrics.limit);
+                    if (metrics.dialog_error) throw new Error(metrics.dialog_error);
+                    if (responses.some((entry) => ['/tpv', '/widgetfc'].includes(entry.path) && (entry.blocked || entry.status >= 400))) throw new Error('SOURCE_SEARCH_REJECTED');
+                    throw error;
+                }
+            },
             async visit(url) {
                 await throttle();
                 try { await page!.goto(officialUrl(url), { waitUntil: 'domcontentloaded' }); await ready(); return await snapshot(); }

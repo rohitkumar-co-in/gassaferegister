@@ -17,6 +17,25 @@ const source = (duplicate = false): SourceSession => ({
     },
 });
 describe('complete bounded workflow', () => {
+    it('looks up one business by registration number and enriches its engineer record', async () => {
+        const session: SourceSession = {
+            async search() { throw new Error('Location search should not be used for direct lookup'); },
+            async lookup(registrationNumber) {
+                expect(registrationNumber).toBe('000001');
+                return { html: fixture('business-profile.html'), url: 'https://www.gassaferegister.co.uk/findbusinessresults?registration=000001' };
+            },
+            async visit(url) {
+                const name = url.includes('businessengineers') ? 'engineers.html' : 'qualifications.html';
+                return { html: fixture(name), url };
+            },
+        };
+        const result = await crawl(session, validateInput({ operation: 'get_business_engineers', registration_number: '000001' }), {
+            async record() { /* In-memory test only. */ }, async progress() { /* In-memory test only. */ },
+        });
+        expect(result.records).toHaveLength(1);
+        expect(result.records[0]).toMatchObject({ registration_number: '000001', business_name: 'Synthetic Test Heating' });
+        expect(result.records[0]?.engineers[0]?.name).toBe('Synthetic Engineer');
+    });
     it('retries a transient idempotent detail visit once and records the retry', async () => {
         let attempts = 0;
         let retries = 0;
