@@ -13,10 +13,23 @@ export async function sourceSearchButton(page: Page) {
     return form.getByRole('button', { name: /^\s*Search(?:\s|$)/ }).first();
 }
 
+/** Recheck consent while waiting: a banner can arrive during actionability checks. */
+async function waitForSourceSearchControl(page: Page) {
+    for (let attempt = 0; attempt < 8; attempt++) {
+        await dismissVisibleSourceDialogs(page);
+        try {
+            await (await sourceSearchButton(page)).click({ trial: true, timeout: 1000 });
+            return;
+        } catch (error) {
+            if (!(error instanceof Error) || error.name !== 'TimeoutError') throw error;
+            if (attempt === 7) throw new Error('SOURCE_SEARCH_CONTROL_UNAVAILABLE');
+        }
+    }
+}
+
 /** Resolve blocking dialogs before entering values that consent may clear. */
 export async function prepareSourceSearch(page: Page, location: string, serviceType: 'Domestic' | 'Commercial') {
-    await dismissVisibleSourceDialogs(page);
-    await (await sourceSearchButton(page)).click({ trial: true });
+    await waitForSourceSearchControl(page);
     const field = page.locator('#WidgetSearchTerm');
     await field.fill(location);
     await page.locator(`#${serviceType}Search`).check();
@@ -42,8 +55,7 @@ export async function submitSourceSearch(page: Page) {
 export async function prepareSourceLookup(page: Page, registrationNumber: string) {
     // Consent may replace/reset the form. Resolve any late banner before
     // switching modes or filling the shared search field.
-    await dismissVisibleSourceDialogs(page);
-    await (await sourceSearchButton(page)).click({ trial: true });
+    await waitForSourceSearchControl(page);
     const checkMode = page.locator('#optCheck');
     if (!await checkMode.count()) throw new Error('SOURCE_CHECK_MODE_NOT_FOUND');
     const checkLabel = page.locator('label[for="optCheck"]').first();
@@ -55,6 +67,5 @@ export async function prepareSourceLookup(page: Page, registrationNumber: string
     await field.fill(registrationNumber);
     await dismissVisibleSourceDialogs(page);
     if (await field.inputValue() !== registrationNumber) throw new Error('SOURCE_REGISTRATION_VALUE_NOT_SET');
-    await dismissVisibleSourceDialogs(page);
-    await (await sourceSearchButton(page)).click({ trial: true });
+    await waitForSourceSearchControl(page);
 }
