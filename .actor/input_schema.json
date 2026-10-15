@@ -6,7 +6,7 @@
     "location": {
       "title": "Town or postcode",
       "type": "string",
-      "description": "One UK town or postcode.",
+      "description": "One UK town or postcode. If a town is ambiguous, enter Town, County (for example, London, Middlesex).",
       "default": "CB1 1JY",
       "editor": "textfield"
     },

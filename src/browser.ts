@@ -24,6 +24,13 @@ export async function createBrowserSession(input: Required<Input>, liveMetrics: 
     const traceStarted = Date.now();
     const responses: { path: string; status: number; method: string; blocked: boolean; elapsed_ms: number; resource_type: string }[] = [];
     const scriptErrors: string[] = [];
+    let lastErrorHint: string | null = null;
+    const rememberError = (error: unknown) => {
+        lastErrorHint = (error instanceof Error ? error.message : String(error))
+            .replace(/https?:\/\/\S+/g, '[URL redacted]')
+            .replace(/\b(?:\d{1,3}\.){3}\d{1,3}\b/g, '[IP redacted]')
+            .slice(0, 300);
+    };
     const close = async () => { await context?.close().catch(() => { /* Best-effort cleanup or diagnostics. */ }); await browser?.close().catch(() => { /* Best-effort cleanup or diagnostics. */ }); };
     const limit = (reason: string) => { metrics.limit ??= reason; void close(); };
     const timer = setTimeout(() => limit('RUNTIME_LIMIT'), input.maxRuntimeSeconds * 1000);
@@ -170,6 +177,7 @@ export async function createBrowserSession(input: Required<Input>, liveMetrics: 
                     await check();
                     return await snapshot();
                 } catch (error) {
+                    rememberError(error);
                     if (metrics.limit) throw new Error(metrics.limit);
                     if (metrics.dialog_error) throw new Error(metrics.dialog_error);
                     if (responses.some((entry) => ['/tpv', '/widgetfc'].includes(entry.path) && (entry.blocked || entry.status >= 400))) throw new Error('SOURCE_SEARCH_REJECTED');
@@ -179,7 +187,7 @@ export async function createBrowserSession(input: Required<Input>, liveMetrics: 
             async visit(url) {
                 await throttle();
                 try { await page!.goto(officialUrl(url), { waitUntil: 'domcontentloaded' }); await ready(); return await snapshot(); }
-                catch (error) { if (metrics.limit) throw new Error(metrics.limit); throw error; }
+                catch (error) { rememberError(error); if (metrics.limit) throw new Error(metrics.limit); throw error; }
             },
             async search(location, county) {
                 await throttle();
@@ -208,7 +216,16 @@ export async function createBrowserSession(input: Required<Input>, liveMetrics: 
                     if (/Multiple matches were found/i.test(await page!.locator('body').innerText())) {
                         const links = page!.getByRole('link').filter({ hasText: /^\s*[^\n]+\s+-\s+[^\n]+\s*$/ });
                         const names = await links.allTextContents();
-                        const selected = selectTown(names, location, county);
+                        let selected: number;
+                        try {
+                            selected = selectTown(names, location, county);
+                        } catch (error) {
+                            if (error instanceof Error && error.message.includes('SOURCE_AMBIGUOUS_LOCATION')) {
+                                const choices = names.filter((name) => name.toLowerCase().startsWith(`${location.toLowerCase()} - `));
+                                throw new Error(`SOURCE_AMBIGUOUS_LOCATION: ${choices.slice(0, 5).join('; ')}. Enter a full postcode or disambiguate as Town, County (for example, London, Middlesex).`);
+                            }
+                            throw error;
+                        }
                         await throttle();
                         await links.nth(selected).click();
                         await page!.locator('.buscard').first().waitFor({ timeout: 12000 }).catch(() => { /* Best-effort cleanup or diagnostics. */ });
@@ -216,6 +233,7 @@ export async function createBrowserSession(input: Required<Input>, liveMetrics: 
                     }
                     return await snapshot();
                 } catch (error) {
+                    rememberError(error);
                     if (metrics.limit) throw new Error(metrics.limit);
                     if (metrics.dialog_error) throw new Error(metrics.dialog_error);
                     if (responses.some((entry) => ['/tpv', '/widgetfc'].includes(entry.path) && (entry.blocked || entry.status >= 400))) throw new Error('SOURCE_SEARCH_REJECTED');
@@ -230,8 +248,8 @@ export async function createBrowserSession(input: Required<Input>, liveMetrics: 
                     const field = document.querySelector<HTMLInputElement>('#WidgetSearchTerm');
                     return field ? { valid: field.validity.valid, message: field.validationMessage, value: field.value } : null;
                 }).catch(() => null);
-                await Actor.setValue('ACCESS-DIAGNOSTIC', { path: new URL(page.url()).pathname, text, form, responses, scriptErrors });
-                await Actor.setValue('DIAGNOSTIC.png', await page.screenshot({ fullPage: false }), { contentType: 'image/png' }).catch(() => { /* Best-effort cleanup or diagnostics. */ });
+                await Actor.setValue('ACCESS-DIAGNOSTIC', { path: new URL(page.url()).pathname, text, form, responses, scriptErrors, error: lastErrorHint });
+                await Actor.setValue('DIAGNOSTIC.png', await page.screenshot({ fullPage: false, timeout: 5000 }), { contentType: 'image/png' }).catch(() => { /* Best-effort cleanup or diagnostics. */ });
             },
             async close() { clearTimeout(timer); await close(); },
         };

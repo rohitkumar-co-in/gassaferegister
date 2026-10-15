@@ -94,6 +94,19 @@ export function validateInput(raw: Input) {
     if (input.includeQualifications && !input.includeEngineers) input.includeQualifications = false;
     input.locations = input.locations.map((value) => value.trim());
     input.location = input.location.trim();
+    // Keep the public form simple: users can disambiguate a town in the same
+    // field (for example, "London, Middlesex") without exposing an extra option.
+    if (!input.locationCounty && input.operation !== 'getBusinessEngineers') {
+        const comma = input.location.lastIndexOf(',');
+        if (comma > 0) {
+            const town = input.location.slice(0, comma).trim();
+            const county = input.location.slice(comma + 1).trim();
+            if (town && county) {
+                input.location = town;
+                input.locationCounty = county;
+            }
+        }
+    }
     return input;
 }
 

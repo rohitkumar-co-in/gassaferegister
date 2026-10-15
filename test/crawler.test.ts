@@ -97,7 +97,7 @@ describe('complete bounded workflow', () => {
             async record() { /* No storage in unit tests. */ }, async progress() { /* No storage in unit tests. */ },
         });
         expect(searches).toBe(2);
-        expect(result.records).toHaveLength(1);
+        expect(result.records).toHaveLength(2);
         expect(result.fatal).toBe(false);
     });
     it('walks pages and enriches records with engineer status and table flags', async () => {
@@ -134,6 +134,11 @@ describe('complete bounded workflow', () => {
         expect(selectTown(['Cambridge - CAMBRIDGESHIRE', 'Cambridge - CAMBRIDGESHIRE'], 'Cambridge', '')).toBe(0);
         expect(selectTown(['Cambridge - CAMBRIDGESHIRE', 'Cambridge - GLOUCESTERSHIRE'], 'Cambridge', 'Gloucestershire')).toBe(1);
     });
+    it('accepts Town, County in the single public location field for ambiguous towns', () => {
+        expect(validateInput({ location: ' London, Middlesex ' })).toMatchObject({ location: 'London', locationCounty: 'Middlesex' });
+        expect(validateInput({ location: 'London', locationCounty: 'Middlesex' })).toMatchObject({ location: 'London', locationCounty: 'Middlesex' });
+        expect(validateInput({ location: 'CB1 1JY' })).toMatchObject({ location: 'CB1 1JY', locationCounty: '' });
+    });
     it('never evaluates injected button JavaScript and rejects off-site navigation targets', () => {
         const original = fixture('engineers.html');
         expect(() => parseEngineers(original.replace('/engineerabcompetencies/123?synthetic=1', 'https://evil.example/'))).toThrow();
@@ -150,7 +155,7 @@ describe('complete bounded workflow', () => {
         expect(result.records[0]?.engineers[0]?.qualifications_status).toBe('unavailable');
         expect(result.records[0]?.enrichment_status).toBe('partial');
     });
-    it('skips already persisted registrations without repeating enrichment', async () => {
+    it('skips already persisted registrations while enriching new ones', async () => {
         let visits = 0;
         const first = await crawl(source(), validateInput({ maxResults: 1 }), {
             async record() { /* No storage in unit tests. */ }, async progress() { /* No storage in unit tests. */ },
@@ -161,7 +166,8 @@ describe('complete bounded workflow', () => {
             async record() { throw new Error('Duplicate dataset write'); }, async progress() { /* No storage in unit tests. */ },
         });
         expect(second.records).toHaveLength(1);
-        expect(visits).toBe(0);
+        // The persisted first business is skipped; the new second business is enriched.
+        expect(visits).toBeGreaterThan(0);
         expect(second.locations[0]?.duplicates_skipped).toBe(1);
     });
 });

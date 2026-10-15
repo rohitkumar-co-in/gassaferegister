@@ -20,7 +20,7 @@ The Store prefill uses bounded live settings and requests Apify's GB residential
 
 ## Inputs
 
-- `location`: one UK town or postcode; default `CB1 1JY`.
+- `location`: one UK town or postcode; default `CB1 1JY`. If a town is ambiguous, enter `Town, County` (for example, `London, Middlesex`) or use a full postcode.
 - `serviceType`: Domestic or Commercial; default Domestic.
 - `maxResults`: maximum unique business records, 1–250; default 10. The Actor continues through listing pages until it reaches this count or the internal 25-page safety ceiling; duplicate results can mean fewer than requested. API callers may set `maxPages` to impose a lower page limit. Engineer-enrichment, pacing, browser, proxy, and resource-limit settings use managed defaults and are hidden from the standard input form.
 
@@ -50,7 +50,7 @@ The `RESULTS` key-value record contains businesses plus per-location pagination 
 
 The source randomizes ordering on each page request. Walking all pages can repeat businesses and omit others. Results are deduplicated by registration number; `duplicates_skipped` is reported per location. `pagination_exhausted` only means all available listing pages in that traversal were processed, **not** that every business was collected. `completeness_guaranteed` is always false.
 
-Only an explicit no-results message is accepted as empty; a confirmed empty search is a successful run with zero records. Block pages, unknown layouts, ambiguous locations and out-of-range pages produce explicit errors. Earlier records remain available when a later request fails. Late-arriving Cookiebot and survey dialogs are handled before ordinary browser actions. The Actor retries an idempotent detail/listing-page visit once after a narrow set of transient transport failures, with a short delay. It does not retry searches, source blocks, validation failures, or resource-limit errors, and does not rotate proxies or use external CAPTCHA services.
+Only an explicit no-results message is accepted as empty; a confirmed empty search is a successful run with zero records. Block pages, unknown layouts, ambiguous locations and out-of-range pages produce explicit errors. Ambiguous town errors include the source's matching choices and accept a disambiguation in the same location field as `Town, County`; the Actor never guesses between places. Earlier records remain available when a later request fails. Late-arriving Cookiebot and survey dialogs are handled before ordinary browser actions. The Actor retries an idempotent detail/listing-page visit once after a narrow set of transient transport failures, with a short delay. It does not retry searches, source blocks, validation failures, or resource-limit errors, and does not rotate proxies or use external CAPTCHA services.
 
 Runs can be resurrected with unchanged input. Existing canonical dataset rows are loaded and skipped on subsequent traversals. There is no guarantee that randomized source ordering stays stable after restart. A fresh run is required for changed input. Dataset writes are append-only; platform write ambiguity can still require consumer deduplication by registration number.
 
