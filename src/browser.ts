@@ -12,7 +12,7 @@ import { selectTown, type SourcePage, type SourceSession } from './crawler.js';
 import { assertSource } from './details.js';
 import { installSourceDialogHandlers } from './dialogs.js';
 import { BASE, officialUrl } from './parser.js';
-import { prepareSourceSearch, sourceSearchButton } from './search-controls.js';
+import { prepareSourceLookup, prepareSourceSearch, sourceSearchButton } from './search-controls.js';
 import { submitValidatedForm } from './search-form.js';
 
 export interface BrowserMetrics { network_requests: number; transferred_bytes: number; browser_user_agent: string; limit: string | null; dialogs_dismissed?: number; dialog_error?: string; imported_cookie_count?: number; proxy_country?: string; proxy_ip_fingerprint?: string }
@@ -157,20 +157,15 @@ export async function createBrowserSession(input: Required<Input>, liveMetrics: 
                     await page!.goto(BASE, { waitUntil: 'domcontentloaded' });
                     if (input.settleSeconds) await new Promise((resolve) => { setTimeout(resolve, input.settleSeconds * 1000); });
                     await check();
-                    const checkBusiness = page!.getByRole('link', { name: /check (?:a )?business/i })
-                        .or(page!.getByRole('button', { name: /check (?:a )?business/i }))
-                        .or(page!.getByRole('tab', { name: /check (?:a )?business/i })).first();
-                    if (await checkBusiness.count() && await checkBusiness.isVisible()) await checkBusiness.click();
-                    const registrationField = page!.locator('input[name*="reg" i],input[id*="reg" i],input[placeholder*="registration" i],#postCodeTownlabel,#WidgetSearchTerm').filter({ visible: true }).first();
-                    if (!await registrationField.count()) throw new Error('SOURCE_REGISTRATION_FORM_NOT_FOUND');
-                    await registrationField.fill(registrationNumber);
-                    if (await registrationField.inputValue() !== registrationNumber) throw new Error('SOURCE_REGISTRATION_VALUE_NOT_SET');
-                    const form = registrationField.locator('xpath=ancestor::form[1]');
-                    const submit = form.locator('button[type="submit"],input[type="submit"]').first();
+                    // The public homepage uses a radio selector ("Find" / "Check"),
+                    // not a separate link or tab. Select Check before reusing the
+                    // shared search box, otherwise a registration number is treated
+                    // as a postcode and the site reports that no postcode was found.
+                    await prepareSourceLookup(page!, registrationNumber);
                     await Promise.all([
                         page!.waitForFunction(() => Boolean(document.querySelector('.buscard,[data-testid="registrationNumber"]'))
-                            || /no (?:registered )?(?:business|results|matches)|registration number.{0,30}(?:not found|invalid)/i.test(document.body.innerText), undefined, { timeout: 15000 }),
-                        await submit.count() && await submit.isVisible() ? submit.click() : registrationField.press('Enter'),
+                            || /no (?:registered )?(?:business|results|matches)|registration number.{0,30}(?:not found|invalid)|that (?:postcode|registration number).{0,40}(?:not found|not recognised)/i.test(document.body.innerText), undefined, { timeout: 20000 }),
+                        (await sourceSearchButton(page!)).click(),
                     ]);
                     await check();
                     return await snapshot();
@@ -203,7 +198,7 @@ export async function createBrowserSession(input: Required<Input>, liveMetrics: 
                             // Submit the observed public search form normally, without the optional AJAX pre-validation step.
                             HTMLFormElement.prototype.submit.call(form);
                         }); return; }
-                        await sourceSearchButton(page!).click();
+                        await (await sourceSearchButton(page!)).click();
                     };
                     await Promise.all([
                         page!.waitForURL((url) => url.pathname !== '/', { waitUntil: 'domcontentloaded' }),
