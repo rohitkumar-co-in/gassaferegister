@@ -2,7 +2,7 @@
 
 Search the public Gas Safe Register by UK town or postcode. Export canonical business records with public contact details, address, registration number, engineer names and status, and Domestic/Commercial qualification tables.
 
-**Beta access status:** a clean-session private cloud run completed search and detail enrichment for one live business through a GB residential proxy. A separate Commercial search and a second postcode search also returned live records. This is limited evidence; the source may block requests, and the Actor does not guarantee availability, result counts, or complete coverage. Do not rely on it for safety-critical verification; check current status directly on the official Gas Safe Register.
+**Access status:** a clean-session cloud run through a GB residential proxy returned a live business record on 15 October 2026. The source may still block requests, and the Actor does not guarantee availability, result counts, or complete coverage. Do not rely on it for safety-critical verification; check current status directly on the official Gas Safe Register.
 
 ## Quick start
 
@@ -16,7 +16,7 @@ For local regression, `offlineTest` uses clearly labelled synthetic fixtures and
 }
 ```
 
-The Store prefill uses bounded live settings and requests Apify's GB residential proxy. Proxy and compute usage are billed separately by Apify. Resource limits reduce exposure but are not a fixed USD run-cost cap.
+The Store defaults to 1 GB of run memory, a 120-second browser ceiling, and a 300-request safety limit. It requests Apify's GB residential proxy. Proxy and compute usage are billed separately by Apify. Resource limits reduce exposure but are not a fixed USD run-cost cap.
 
 ## Inputs
 
@@ -56,9 +56,9 @@ Runs can be resurrected with unchanged input. Existing canonical dataset rows ar
 
 ## Cost controls
 
-Private Actor compute, proxy bandwidth/Unblocker units and storage consume platform credit. Included credit is still usage. Request/transfer/runtime/result/page caps limit exposure but are not an invoice guarantee. The API `maxTotalChargeUsd` option applies to pay-per-event Actor fees and does not cap this private Actor's platform resources.
+Compute, proxy bandwidth/Unblocker units and storage consume platform credit. Included credit is still usage. Request/transfer/runtime/result/page caps limit exposure but are not an invoice guarantee. The API `maxTotalChargeUsd` option applies to pay-per-event Actor fees and does not cap platform resources.
 
-Small development tests are supervised and targeted well below $0.30 each. A full multi-page/enriched crawl can cost more and requires separately chosen budgets. There are no schedules or recurring runs. Do not publish or advertise this beta as reliable before successful fresh cloud runs across representative towns/postcodes and detail pages.
+Small development tests are supervised and targeted well below $0.30 each. A full multi-page/enriched crawl can cost more and requires separately chosen budgets. There are no schedules or recurring runs.
 
 ## Development
 
@@ -68,7 +68,7 @@ The pinned Dockerfile combines official Chrome and Camoufox browser assets. Depe
 
 To run the delayed-dialog browser regression tests with local Chrome installed, set `RUN_BROWSER_TESTS=1` before `npm test`. These tests use synthetic pages and make no external requests.
 
-Private beta note: the earlier verified cloud run used an owner-only session cookie secret. Cookie import is disabled unless the private runtime flag `GAS_SAFE_USE_PRIVATE_COOKIES=true` is set. Do not enable that flag or expose personal session cookies on a public Actor; clean-session access and source permission requirements must be resolved before a public paid launch. For pay-per-event runs, a spending-limit preflight refuses to start browser/proxy work if the user's maximum charge cannot cover one result, then checks again before doing enrichment for each next business. Dataset-item charges occur only when a completed business record is saved. Confirmed empty searches are successful and are not charged as dataset results; failed scrapes and blocked requests produce explicit run-summary errors.
+The Actor always starts a clean browser session and does not import account cookies. For pay-per-event runs, a spending-limit preflight refuses to start browser/proxy work if the user's maximum charge cannot cover one result, then checks again before doing enrichment for each next business. Dataset-item charges occur only when a completed business record is saved. Confirmed empty searches are successful and are not charged as dataset results; failed scrapes and blocked requests produce explicit run-summary errors.
 
 
 Experimental Patchright profile: patchrightHeaded uses the pinned Patchright Chromium driver with branded Chrome. A local Windows comparison returned one live business while standard Playwright was blocked on the same observed GB proxy exit. This is one comparison, not a reliability guarantee. GAS_SAFE_PROXY_SESSION can pin an alphanumeric proxy session for controlled comparisons; GAS_SAFE_VERIFY_PROXY=1 verifies GB egress against Apify browser-info and records only a hashed IP fingerprint. These options do not override resource limits. Cloud validation remains separate.

@@ -11,6 +11,7 @@ describe('safe failure diagnostics', () => {
     it('does not expose unexpected error contents', () => {
         expect(classifyError(new Error('password=secret'))).toBe('PROBE_FAILED');
         expect(classifyError(new Error('SOURCE_BLOCKED'))).toBe('SOURCE_BLOCKED');
+        expect(classifyError(new Error('locator.count: Target crashed'))).toBe('BROWSER_CRASHED');
     });
     it('retries only transient transport failures, never source blocks or validation errors', () => {
         expect(isRetryableVisitError(new Error('page.goto: net::ERR_CONNECTION_RESET'))).toBe(true);

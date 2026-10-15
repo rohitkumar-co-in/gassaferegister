@@ -1,10 +1,11 @@
 /** Keep browser error codes without copying URLs or credentials into logs. */
 export function classifyError(error: unknown): string {
     const message = error instanceof Error ? error.message : '';
+    if (/target crashed|page crashed|browser has been closed/i.test(message)) return 'BROWSER_CRASHED';
     if (error instanceof Error && ['TimeoutError', 'AbortError'].includes(error.name)) return 'TRANSPORT_TIMEOUT';
     const networkCode = message.match(/\b(?:NET::)?(ERR_[A-Z_]+)\b/);
     if (networkCode) return `TRANSPORT_${networkCode[1]}`;
-    if (/^(SOURCE_|UNRECOGNIZED_|PROXY_|Invalid|RUNTIME_LIMIT|TRANSFER_LIMIT|NETWORK_REQUEST_LIMIT|USER_MAX_CHARGE)/.test(message)) return message.split('\n')[0]!.slice(0, 160);
+    if (/^(SOURCE_|UNRECOGNIZED_|PROXY_|BROWSER_|Invalid|RUNTIME_LIMIT|TRANSFER_LIMIT|NETWORK_REQUEST_LIMIT|USER_MAX_CHARGE)/.test(message)) return message.split('\n')[0]!.slice(0, 160);
     return 'PROBE_FAILED';
 }
 
