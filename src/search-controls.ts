@@ -1,5 +1,7 @@
 import type { Page } from 'playwright';
 
+import { dismissVisibleSourceDialogs } from './dialogs.js';
+
 /** Prefer the user-verified label; retain support for older unlabelled markup. */
 export async function sourceSearchButton(page: Page) {
     const form = page.locator('#FindAndCheckForm');
@@ -13,10 +15,12 @@ export async function sourceSearchButton(page: Page) {
 
 /** Resolve blocking dialogs before entering values that consent may clear. */
 export async function prepareSourceSearch(page: Page, location: string, serviceType: 'Domestic' | 'Commercial') {
+    await dismissVisibleSourceDialogs(page);
     await (await sourceSearchButton(page)).click({ trial: true });
     const field = page.locator('#WidgetSearchTerm');
     await field.fill(location);
     await page.locator(`#${serviceType}Search`).check();
+    await dismissVisibleSourceDialogs(page);
     if (await field.inputValue() !== location) await field.fill(location);
 }
 
@@ -24,6 +28,7 @@ export async function prepareSourceSearch(page: Page, location: string, serviceT
 export async function prepareSourceLookup(page: Page, registrationNumber: string) {
     // Consent may replace/reset the form. Resolve any late banner before
     // switching modes or filling the shared search field.
+    await dismissVisibleSourceDialogs(page);
     await (await sourceSearchButton(page)).click({ trial: true });
     const checkMode = page.locator('#optCheck');
     if (!await checkMode.count()) throw new Error('SOURCE_CHECK_MODE_NOT_FOUND');
@@ -34,6 +39,7 @@ export async function prepareSourceLookup(page: Page, registrationNumber: string
     if (!await checkMode.isChecked()) throw new Error('SOURCE_CHECK_MODE_NOT_SELECTED');
     const field = page.locator('#WidgetSearchTerm');
     await field.fill(registrationNumber);
+    await dismissVisibleSourceDialogs(page);
     if (await field.inputValue() !== registrationNumber) throw new Error('SOURCE_REGISTRATION_VALUE_NOT_SET');
     await (await sourceSearchButton(page)).click({ trial: true });
 }

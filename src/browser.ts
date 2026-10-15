@@ -10,7 +10,7 @@ import { allowedCertificateExceptionUrl, type Input } from './config.js';
 import { parseSourceCookies } from './cookies.js';
 import { selectTown, type SourcePage, type SourceSession } from './crawler.js';
 import { assertSource } from './details.js';
-import { installSourceDialogHandlers } from './dialogs.js';
+import { dismissVisibleSourceDialogs, installSourceDialogHandlers } from './dialogs.js';
 import { BASE, officialUrl } from './parser.js';
 import { prepareSourceLookup, prepareSourceSearch, sourceSearchButton } from './search-controls.js';
 import { submitValidatedForm } from './search-form.js';
@@ -196,6 +196,9 @@ export async function createBrowserSession(input: Required<Input>, liveMetrics: 
                     if (input.settleSeconds) await new Promise((resolve) => { setTimeout(resolve, input.settleSeconds * 1000); });
                     await check();
                     await prepareSourceSearch(page!, location, input.serviceType);
+                    await dismissVisibleSourceDialogs(page!);
+                    const searchField = page!.locator('#WidgetSearchTerm');
+                    if (await searchField.inputValue() !== location) await searchField.fill(location);
                     const submit = async () => {
                         if (input.searchMethod === 'keyboard') { await page!.locator('#WidgetSearchTerm').press('Enter'); return; }
                         if (input.searchMethod === 'validatedForm') { await page!.evaluate(submitValidatedForm); return; }
