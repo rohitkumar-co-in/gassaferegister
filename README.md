@@ -46,7 +46,7 @@ Each qualification contains `category`, `service`, `natural_gas`, `lpg`, `buildi
 
 `enrichment_status`, `enrichment_error`, `engineers_truncated` and per-engineer qualification status make partial data explicit. An inaccessible detail page preserves the business record, marks enrichment failed/partial, and stops further requests on a detected source block or resource limit.
 
-The Output tab has separate Businesses, Engineers, and Qualifications views. Engineers shows one row per engineer with their status and nested qualifications. Qualifications shows one row per qualification with the engineer's name and the Natural gas, LPG, and Building regulations flags. Businesses places Engineers before Qualifications; the two arrays retain their existing API field names.
+The Output tab has separate Businesses, Engineers, and Qualifications views. Engineers shows an expandable list of engineers with their status and nested qualifications. Qualifications shows an expandable qualification list with the engineer's name and the Natural gas, LPG, and Building regulations flags. Businesses places Engineers before Qualifications; the two arrays retain their existing API field names.
 
 The `RESULTS` key-value record contains businesses plus per-location pagination metadata. `RUN-SUMMARY` contains status, errors, request count, observed transfer, timestamps and page statistics. Dataset exports support JSON, CSV and Excel through Apify. Nested engineer/qualification arrays are best exported as JSON.
 
