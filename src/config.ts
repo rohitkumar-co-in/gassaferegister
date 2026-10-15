@@ -47,13 +47,15 @@ export function validateInput(raw: Input) {
     const includeEngineers = parsedIncludeEngineers ?? raw.includeEngineers;
     if (registrationNumber !== undefined) normalized.registrationNumber = registrationNumber;
     if (serviceType !== undefined) normalized.serviceType = serviceType;
-    if (maxPages !== undefined) normalized.maxPages = maxPages;
     if (maxResults !== undefined) normalized.maxResults = maxResults;
+    // Keep API callers' explicit page cap. The default 25-page ceiling lets maxResults
+    // control the count without prematurely stopping when randomized pages overlap.
+    if (maxPages !== undefined) normalized.maxPages = maxPages;
     if (includeEngineers !== undefined) normalized.includeEngineers = includeEngineers;
     const input = { mode: 'offlineTest', location: 'CB1 1JY', serviceType: 'Domestic', useUkResidentialProxy: false,
         browserProfile: 'camoufoxHeaded', proxyCountry: 'GB', proxyService: 'residential', allowUnblockerCertificateException: false,
         maxRuntimeSeconds: 90, maxNetworkRequests: 80, loadPageAssets: false, settleSeconds: 0, maxTransferMegabytes: 5,
-        operation: 'searchBusinesses', registrationNumber: '', locations: [], locationCounty: '', searchMethod: 'siteUi', page: 1, maxPages: 1, maxResults: 10, includeEngineers: true,
+        operation: 'searchBusinesses', registrationNumber: '', locations: [], locationCounty: '', searchMethod: 'siteUi', page: 1, maxPages: 25, maxResults: 10, includeEngineers: true,
         includeQualifications: true, maxEngineerPages: 10, maxEngineersPerBusiness: 100, requestDelayMillis: 1000,
         ...normalized } as Required<Input>;
     if (!['offlineTest', 'probe', 'scrape'].includes(input.mode)) throw new Error('Invalid mode');

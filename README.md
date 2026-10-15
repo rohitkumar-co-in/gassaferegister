@@ -22,7 +22,7 @@ The Store prefill uses bounded live settings and requests Apify's GB residential
 
 - `location`: one UK town or postcode; default `CB1 1JY`.
 - `serviceType`: Domestic or Commercial; default Domestic.
-- `maxResults`: maximum unique business records, 1–250; default 10. Listing-page, engineer-enrichment, pacing, browser, proxy, and resource-limit settings use managed defaults and are hidden from the standard input form.
+- `maxResults`: maximum unique business records, 1–250; default 10. The Actor continues through listing pages until it reaches this count or the internal 25-page safety ceiling; duplicate results can mean fewer than requested. API callers may set `maxPages` to impose a lower page limit. Engineer-enrichment, pacing, browser, proxy, and resource-limit settings use managed defaults and are hidden from the standard input form.
 
 ### API operations
 

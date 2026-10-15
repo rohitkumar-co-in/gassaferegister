@@ -34,6 +34,9 @@ describe('data and budget safety', () => {
         expect(validateInput({}).mode).toBe('offlineTest');
         expect(validateInput({}).location).toBe('CB1 1JY');
         expect(validateInput({}).useUkResidentialProxy).toBe(false);
+        expect(validateInput({}).maxPages).toBe(25);
+        expect(validateInput({ maxResults: 50 })).toMatchObject({ maxResults: 50, maxPages: 25 });
+        expect(validateInput({ maxResults: 50, maxPages: 2 })).toMatchObject({ maxResults: 50, maxPages: 2 });
         expect(validateInput({ operation: 'search_businesses_basic', location: 'Cambridge', include_engineers: 'true', max_pages: 3 }))
             .toMatchObject({ operation: 'searchBusinessesBasic', includeEngineers: false, maxPages: 3, maxResults: 30 });
         expect(validateInput({ operation: 'get_business_engineers', registration_number: '000001' }))
