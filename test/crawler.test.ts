@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 
 import { validateInput } from '../src/config.js';
 import { crawl, getRunStatus, selectTown, visitWithBoundedRetry, type SourceSession } from '../src/crawler.js';
-import { parseEngineers, parseQualifications } from '../src/details.js';
+import { assertSource, parseEngineers, parseQualifications } from '../src/details.js';
 
 const fixture = (name: string) => readFileSync(new URL(`../fixtures/${name}`, import.meta.url), 'utf8');
 const source = (duplicate = false): SourceSession => ({
@@ -144,6 +144,10 @@ describe('complete bounded workflow', () => {
         expect(() => parseEngineers(original.replace('/engineerabcompetencies/123?synthetic=1', 'https://evil.example/'))).toThrow();
         expect(parseEngineers(original.replace("window.location='/engineerabcompetencies/123?synthetic=1'", 'alert(1)')).engineers[0]?.qualifications_url).toBeNull();
         expect(() => parseQualifications('<html>Unexpected page</html>')).toThrow('UNRECOGNIZED');
+    });
+    it('detects the source bot challenge even when Imperva responds with HTTP 200', () => {
+        expect(() => assertSource('<main>Pardon Our Interruption. Something about your browser made us think you were a bot.</main>'))
+            .toThrow('SOURCE_BLOCKED');
     });
     it('marks requested qualifications unavailable when no detail link is supplied', async () => {
         const base = source();

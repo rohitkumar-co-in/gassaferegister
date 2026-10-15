@@ -25,7 +25,9 @@ export interface Engineer {
 export function assertSource(html: string) {
     const $ = load(html);
     $('script,style,noscript').remove();
-    if (/access denied|blocked by our security service|request unsuccessful/i.test($.root().text())) throw new Error('SOURCE_BLOCKED');
+    if (/access denied|blocked by our security service|request unsuccessful|pardon our interruption|made us think you were a bot/i.test($.root().text())) {
+        throw new Error('SOURCE_BLOCKED');
+    }
 }
 export function parseEngineers(html: string) {
     assertSource(html);
