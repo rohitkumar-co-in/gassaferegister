@@ -1,0 +1,21 @@
+{
+  "actorOutputSchemaVersion": 1,
+  "title": "Gas Safe results",
+  "properties": {
+    "dataset": {
+      "type": "string",
+      "title": "Businesses",
+      "template": "{{links.apiDefaultDatasetUrl}}/items"
+    },
+    "summary": {
+      "type": "string",
+      "title": "Run summary",
+      "template": "{{links.apiDefaultKeyValueStoreUrl}}/records/RUN-SUMMARY"
+    },
+    "results": {
+      "type": "string",
+      "title": "Combined JSON result",
+      "template": "{{links.apiDefaultKeyValueStoreUrl}}/records/RESULTS"
+    }
+  }
+}

@@ -1,21 +1,26 @@
-# Multi-stage or single standard Apify Playwright container
-FROM apify/actor-node-playwright-chrome:20
+FROM apify/actor-node-playwright-camoufox:24-1.62.1-slim@sha256:5af9811600309cc04ce52dd93313a26804c8f1dcebab8e121a6d5b71764f1ff0 AS camoufox_assets
+FROM apify/actor-node-playwright-chrome:24-1.64.0-slim@sha256:097f62094fc990378752e73b772e41bfc703c90d286d26c938a3d093872336a0 AS builder
+USER root
+RUN apt-get update && apt-get install -y --no-install-recommends python3 make g++ && rm -rf /var/lib/apt/lists/*
+USER myuser
+WORKDIR /home/myuser
+COPY --chown=myuser:myuser package*.json ./
+RUN npm ci --include=dev --no-audit --no-fund
+COPY --chown=myuser:myuser tsconfig.json ./
+COPY --chown=myuser:myuser src ./src
+RUN npm run build && npm prune --omit=dev --no-audit --no-fund
 
-# Copy package definition files
-COPY package*.json ./
-
-# Install production dependencies without running audit or funding scripts
-RUN npm --quiet set progress=false \
- && npm install --omit=dev --omit=optional \
- && echo "Installed NPM packages:" \
- && (npm list --omit=dev --all || true) \
- && echo "Node.js version:" \
- && node --version \
- && echo "NPM version:" \
- && npm --version
-
-# Copy actor source files
-COPY . ./
-
-# Start actor
-CMD ["npm", "start"]
+FROM apify/actor-node-playwright-chrome:24-1.64.0-slim@sha256:097f62094fc990378752e73b772e41bfc703c90d286d26c938a3d093872336a0
+USER root
+RUN apt-get update && apt-get install -y --no-install-recommends libdbus-glib-1-2 libgtk-3-0 libxt6 && rm -rf /var/lib/apt/lists/*
+USER myuser
+WORKDIR /home/myuser
+COPY --from=camoufox_assets --chown=myuser:myuser /home/myuser/.cache/camoufox /home/myuser/.cache/camoufox
+COPY --from=camoufox_assets --chown=myuser:myuser /home/myuser/.cache/camoufox-current /home/myuser/.cache/camoufox-current
+ENV GAS_SAFE_CAMOUFOX_PATH=/home/myuser/.cache/camoufox-current/camoufox-bin
+COPY --chown=myuser:myuser package*.json ./
+COPY --from=builder --chown=myuser:myuser /home/myuser/node_modules ./node_modules
+COPY --from=builder --chown=myuser:myuser /home/myuser/dist ./dist
+COPY --chown=myuser:myuser fixtures ./fixtures
+COPY --chown=myuser:myuser .actor ./.actor
+CMD ["node", "dist/main.js"]

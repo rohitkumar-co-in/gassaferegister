@@ -1,0 +1,19 @@
+FROM apify/actor-node-playwright-camoufox:24-1.62.1-slim@sha256:5af9811600309cc04ce52dd93313a26804c8f1dcebab8e121a6d5b71764f1ff0 AS builder
+USER root
+RUN apt-get update && apt-get install -y --no-install-recommends python3 make g++ && rm -rf /var/lib/apt/lists/*
+USER myuser
+WORKDIR /home/myuser
+COPY --chown=myuser:myuser package*.json ./
+RUN npm ci --include=dev --no-audit --no-fund
+COPY --chown=myuser:myuser tsconfig.json ./
+COPY --chown=myuser:myuser src ./src
+RUN npm run build && npm prune --omit=dev --no-audit --no-fund
+
+FROM apify/actor-node-playwright-camoufox:24-1.62.1-slim@sha256:5af9811600309cc04ce52dd93313a26804c8f1dcebab8e121a6d5b71764f1ff0
+WORKDIR /home/myuser
+COPY --chown=myuser:myuser package*.json ./
+COPY --from=builder --chown=myuser:myuser /home/myuser/node_modules ./node_modules
+COPY --from=builder --chown=myuser:myuser /home/myuser/dist ./dist
+COPY --chown=myuser:myuser fixtures ./fixtures
+COPY --chown=myuser:myuser .actor ./.actor
+CMD ["node", "dist/main.js"]

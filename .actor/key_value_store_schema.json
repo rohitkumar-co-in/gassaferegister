@@ -1,0 +1,48 @@
+{
+  "actorKeyValueStoreSchemaVersion": 1,
+  "title": "Results and diagnostics",
+  "collections": {
+    "summary": {
+      "title": "Run summary",
+      "key": "RUN-SUMMARY",
+      "contentTypes": [
+        "application/json"
+      ]
+    },
+    "diagnostic": {
+      "title": "Failure screenshot",
+      "key": "DIAGNOSTIC.png",
+      "contentTypes": [
+        "image/png"
+      ]
+    },
+    "access": {
+      "title": "Access diagnostics",
+      "key": "ACCESS-DIAGNOSTIC",
+      "contentTypes": [
+        "application/json"
+      ]
+    },
+    "http": {
+      "title": "HTTP probe diagnostics",
+      "key": "HTTP-DIAGNOSTIC",
+      "contentTypes": [
+        "application/json"
+      ]
+    },
+    "results": {
+      "title": "Combined business results",
+      "key": "RESULTS",
+      "contentTypes": [
+        "application/json"
+      ]
+    },
+    "state": {
+      "title": "Resume state",
+      "key": "STATE",
+      "contentTypes": [
+        "application/json"
+      ]
+    }
+  }
+}

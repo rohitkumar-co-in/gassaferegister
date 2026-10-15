@@ -1,68 +1,213 @@
 {
-  "title": "Gas Safe Register UK Scraper (Parse.bot Compatible)",
+  "title": "Gas Safe Register UK Business Search",
   "type": "object",
   "schemaVersion": 1,
   "properties": {
+    "mode": {
+      "title": "Mode",
+      "type": "string",
+      "description": "offlineTest uses synthetic fixtures without network requests. scrape walks listing and detail pages. probe is a small live diagnostic.",
+      "enum": [
+        "offlineTest",
+        "probe",
+        "scrape"
+      ],
+      "default": "scrape"
+    },
     "location": {
-      "title": "Location (City or Postcode)",
+      "title": "Town or postcode",
       "type": "string",
-      "description": "City/town name (e.g. 'Cambridge', 'Leeds') or UK postcode (e.g. 'CB1 1JY'). Used for search_businesses.",
-      "default": "Cambridge",
+      "description": "One UK town or postcode.",
+      "default": "CB1 1JY",
       "editor": "textfield"
     },
-    "registration_number": {
-      "title": "Registration Number (Optional Direct Lookup)",
+    "serviceType": {
+      "title": "Service type",
       "type": "string",
-      "description": "Look up one Gas Safe registered business by registration number and return its details with every engineer (matches Parse.bot get_business_engineers). If provided, location search is skipped.",
-      "editor": "textfield"
+      "description": "Public search category.",
+      "enum": [
+        "Domestic",
+        "Commercial"
+      ],
+      "default": "Domestic"
     },
-    "service_type": {
-      "title": "Service Type",
-      "type": "string",
-      "description": "Gas service category to search ('Domestic' or 'Commercial').",
-      "enum": ["Domestic", "Commercial"],
-      "default": "Domestic",
-      "editor": "select"
-    },
-    "page": {
-      "title": "Starting Page",
-      "type": "integer",
-      "description": "First listing page to read (1-indexed, 10 results per page).",
-      "default": 1,
-      "minimum": 1
-    },
-    "max_pages": {
-      "title": "Max Pages",
-      "type": "integer",
-      "description": "Number of consecutive listing pages to fetch and combine into the response (1-25).",
-      "default": 1,
-      "minimum": 1,
-      "maximum": 25
-    },
-    "include_engineers": {
-      "title": "Include Engineers",
+    "useUkResidentialProxy": {
+      "title": "Use UK residential proxy",
       "type": "boolean",
-      "description": "Set to true to fetch the engineers array for each business (one extra request per business); false to leave it empty (bulk mode).",
+      "description": "Enabled in the Store prefill to route requests through a UK residential proxy. Requires account entitlement; bandwidth is billed by Apify.",
       "default": true
     },
-    "include_services": {
-      "title": "Include Services / Competencies Matrix",
+    "maxRuntimeSeconds": {
+      "title": "Browser runtime limit",
+      "type": "integer",
+      "description": "Closes browser after this many seconds; also set a platform timeout.",
+      "minimum": 15,
+      "maximum": 180,
+      "default": 120
+    },
+    "maxNetworkRequests": {
+      "title": "Network request limit",
+      "type": "integer",
+      "description": "Hard per-run ceiling for browser network requests, including scripts and frames. Higher values allow detail enrichment to finish but can increase proxy bandwidth and runtime.",
+      "minimum": 10,
+      "maximum": 300,
+      "default": 300
+    },
+    "browserProfile": {
+      "title": "Browser profile",
+      "type": "string",
+      "description": "The Store prefill uses Patchright Chromium, verified in limited clean-session cloud tests. Chrome and Camoufox remain alternatives; any profile can still be blocked by the source.",
+      "enum": [
+        "plainHeadless",
+        "crawleeChrome",
+        "unblockerHttp",
+        "chromeHeaded",
+        "chromeHeadless",
+        "chromiumHeaded",
+        "camoufoxHeaded",
+        "patchrightHeaded"
+      ],
+      "default": "patchrightHeaded"
+    },
+    "proxyService": {
+      "title": "Proxy service",
+      "type": "string",
+      "description": "Residential uses bandwidth billing and a session. Unblocker uses separately billed units and does not support sticky sessions.",
+      "enum": [
+        "residential",
+        "unblocker"
+      ],
+      "default": "residential"
+    },
+    "allowUnblockerCertificateException": {
+      "title": "Allow isolated Unblocker certificate exception",
       "type": "boolean",
-      "description": "Scrape full domestic & commercial qualifications matrix (Natural Gas, LPG, Building Regulations) for each business.",
+      "description": "Experimental, default off. Skips HTTPS certificate validation in one disposable browser context. All browser requests are restricted to the two exact Gas Safe HTTPS hosts. Requires a live Unblocker probe and explicit user consent.",
       "default": false
     },
-    "proxyConfiguration": {
-      "title": "Proxy Configuration",
-      "type": "object",
-      "description": "UK Residential Proxy configuration (essential for Incapsula anti-bot bypass).",
-      "editor": "proxy",
-      "default": {
-        "useApifyProxy": true,
-        "apifyProxyGroups": [
-          "RESIDENTIAL"
-        ],
-        "apifyProxyCountry": "GB"
-      }
+    "loadPageAssets": {
+      "title": "Load page assets",
+      "type": "boolean",
+      "description": "Allow normal image, media and font loading during compatibility tests; proxy bandwidth may increase.",
+      "default": false
+    },
+    "settleSeconds": {
+      "title": "Homepage settling time",
+      "type": "integer",
+      "description": "Allow initial page JavaScript to finish before submitting a search.",
+      "minimum": 0,
+      "maximum": 10,
+      "default": 5
+    },
+    "maxTransferMegabytes": {
+      "title": "Observed transfer limit (MB)",
+      "type": "integer",
+      "description": "Close the browser when observed CDP resource transfer exceeds this limit. In-flight resources can overshoot; not a billing cap.",
+      "minimum": 1,
+      "maximum": 10,
+      "default": 10
+    },
+    "proxyCountry": {
+      "title": "Proxy country",
+      "type": "string",
+      "editor": "select",
+      "enum": [
+        "GB",
+        "AUTO"
+      ],
+      "default": "GB",
+      "description": "GB for UK routes; AUTO lets Apify select a country."
+    },
+    "locations": {
+      "title": "Towns or postcodes",
+      "type": "array",
+      "editor": "stringList",
+      "default": [],
+      "description": "Optional list of up to ten locations; overrides location. Results share one global maxResults budget."
+    },
+    "locationCounty": {
+      "title": "County for ambiguous towns",
+      "type": "string",
+      "editor": "textfield",
+      "default": "",
+      "description": "Exact county label, e.g. CAMBRIDGESHIRE. Required when multiple different towns match; full postcodes usually avoid ambiguity."
+    },
+    "page": {
+      "title": "First listing page",
+      "type": "integer",
+      "default": 1,
+      "minimum": 1,
+      "maximum": 100,
+      "description": "First listing page, numbered from one."
+    },
+    "maxPages": {
+      "title": "Listing pages per location",
+      "type": "integer",
+      "default": 1,
+      "minimum": 1,
+      "maximum": 25,
+      "description": "Maximum consecutive listing pages per location. Random source ordering can repeat or omit businesses."
+    },
+    "maxResults": {
+      "title": "Maximum unique businesses",
+      "type": "integer",
+      "default": 1,
+      "minimum": 1,
+      "maximum": 250,
+      "description": "Global maximum canonical business records, deduplicated by registration number."
+    },
+    "includeEngineers": {
+      "title": "Include engineers",
+      "type": "boolean",
+      "default": true,
+      "description": "Visit engineer pages for each business, within the shared resource limits."
+    },
+    "includeQualifications": {
+      "title": "Include qualification tables",
+      "type": "boolean",
+      "default": true,
+      "description": "Visit each engineer service page and parse Domestic and Commercial tables; requires includeEngineers."
+    },
+    "maxEngineerPages": {
+      "title": "Engineer pages per business",
+      "type": "integer",
+      "default": 1,
+      "minimum": 1,
+      "maximum": 10,
+      "description": "Maximum engineer listing pages per business. Truncated enrichment is flagged."
+    },
+    "maxEngineersPerBusiness": {
+      "title": "Engineers per business",
+      "type": "integer",
+      "default": 1,
+      "minimum": 1,
+      "maximum": 100,
+      "description": "Bound on unique engineers per business. Extra engineers are explicitly marked truncated."
+    },
+    "requestDelayMillis": {
+      "title": "Navigation delay (ms)",
+      "type": "integer",
+      "default": 1000,
+      "minimum": 500,
+      "maximum": 10000,
+      "description": "Minimum delay between top-level navigations. One browser and one page at a time."
+    },
+    "searchMethod": {
+      "title": "Search form compatibility",
+      "type": "string",
+      "editor": "select",
+      "enum": [
+        "siteUi",
+        "nativeForm",
+        "keyboard",
+        "validatedForm"
+      ],
+      "default": "siteUi",
+      "description": "siteUi clicks Search. keyboard presses Enter. validatedForm calls the observed /tpv validation endpoint with current form state, then submits normally. nativeForm skips optional client-side validation. Source access controls still apply."
     }
-  }
+  },
+  "required": [
+    "mode",
+    "location"
+  ]
 }

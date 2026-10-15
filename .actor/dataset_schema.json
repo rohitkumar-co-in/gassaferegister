@@ -1,0 +1,307 @@
+{
+  "actorSpecification": 1,
+  "fields": {
+    "type": "object",
+    "properties": {
+      "business_name": {
+        "type": "string"
+      },
+      "registration_number": {
+        "type": "string"
+      },
+      "location": {
+        "type": "string"
+      },
+      "service_type": {
+        "type": "string"
+      },
+      "source_kind": {
+        "type": "string"
+      },
+      "scraped_at": {
+        "type": "string"
+      },
+      "enrichment_status": {
+        "type": "string"
+      },
+      "telephone": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "email": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "distance_miles": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "engineers_url": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "services_url": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "source_url": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "address": {
+        "type": "object",
+        "properties": {
+          "premise": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "street": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "town": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "county": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "postcode": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "full_address": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "out_of_hours_available": {
+        "type": "boolean"
+      },
+      "engineers": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "name": {
+              "type": "string"
+            },
+            "services": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "status": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "telephone": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "qualifications_url": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "qualifications": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "category": {
+                    "type": "string"
+                  },
+                  "service": {
+                    "type": "string"
+                  },
+                  "natural_gas": {
+                    "type": [
+                      "boolean",
+                      "null"
+                    ]
+                  },
+                  "lpg": {
+                    "type": [
+                      "boolean",
+                      "null"
+                    ]
+                  },
+                  "building_regulations": {
+                    "type": [
+                      "boolean",
+                      "null"
+                    ]
+                  },
+                  "is_group": {
+                    "type": "boolean"
+                  }
+                }
+              }
+            },
+            "qualifications_status": {
+              "type": "string"
+            },
+            "error": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        }
+      },
+      "qualifications": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "category": {
+              "type": "string"
+            },
+            "service": {
+              "type": "string"
+            },
+            "natural_gas": {
+              "type": [
+                "boolean",
+                "null"
+              ]
+            },
+            "lpg": {
+              "type": [
+                "boolean",
+                "null"
+              ]
+            },
+            "building_regulations": {
+              "type": [
+                "boolean",
+                "null"
+              ]
+            },
+            "is_group": {
+              "type": "boolean"
+            },
+            "engineer_name": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "trading_name": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "enrichment_error": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "engineers_truncated": {
+        "type": "boolean"
+      }
+    },
+    "required": [
+      "business_name",
+      "registration_number",
+      "location",
+      "service_type",
+      "source_kind",
+      "scraped_at",
+      "enrichment_status",
+      "telephone",
+      "email",
+      "distance_miles",
+      "engineers_url",
+      "services_url",
+      "source_url",
+      "address",
+      "out_of_hours_available",
+      "engineers",
+      "qualifications",
+      "trading_name",
+      "enrichment_error",
+      "engineers_truncated"
+    ]
+  },
+  "views": {
+    "overview": {
+      "title": "Businesses",
+      "transformation": {
+        "fields": [
+          "business_name",
+          "registration_number",
+          "telephone",
+          "email",
+          "address",
+          "source_kind"
+        ]
+      },
+      "display": {
+        "component": "table",
+        "properties": {
+          "business_name": {
+            "label": "Business",
+            "format": "text"
+          },
+          "registration_number": {
+            "label": "Registration",
+            "format": "text"
+          },
+          "telephone": {
+            "label": "Phone",
+            "format": "text"
+          },
+          "email": {
+            "label": "Email",
+            "format": "text"
+          },
+          "address": {
+            "label": "Address",
+            "format": "object"
+          },
+          "source_kind": {
+            "label": "Source",
+            "format": "text"
+          }
+        }
+      }
+    }
+  }
+}

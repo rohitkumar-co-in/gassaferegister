@@ -1,7 +1,51 @@
-node_modules/
-storage/
+# This file tells Git which files shouldn't be added to source control
+
+.idea
+.vscode
+.zed
+storage
+apify_storage
+crawlee_storage
+node_modules
+dist
+tsconfig.tsbuildinfo
+
+# Added by Apify CLI
+.venv
+
 .env
-dist/
-.DS_Store
-Thumbs.db
-gas-safe-chrome-extension/
+.env.*
+*.log
+
+RESEARCH_SCRAPFLY.*
+
+# Local access experiments and account usage evidence
+experiment-results/
+CREATOR_CREDIT_EVIDENCE.json
+BUDGET_POLICY.md
+PRODUCT_STATUS.md
+PRODUCT_TEST_RESULTS.json
+CLOUD_TEST_RESULT.json
+ACCESS_TEST_RESULTS.json
+ACCESS_MATRIX_RESULTS.json
+ACCESS_MATRIX.md
+CERTIFICATE_AND_HTTP_TEST_RESULTS.json
+
+*cookie*.json
+
+# Local access experiments and account usage evidence
+experiment-cases/
+certificate-probe-input.json
+http-probe-input.json
+probe-input.json
+unblocker-probe-input.json
+BUDGET_POLICY.md
+PRODUCT_STATUS.md
+CREATOR_CREDIT_EVIDENCE.json
+PRODUCT_TEST_RESULTS.json
+CLOUD_TEST_RESULT.json
+ACCESS_TEST_RESULTS.json
+ACCESS_MATRIX_RESULTS.json
+ACCESS_MATRIX.md
+CERTIFICATE_AND_HTTP_TEST_RESULTS.json
+*cookie*.json
