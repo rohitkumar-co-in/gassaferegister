@@ -270,6 +270,8 @@
           "telephone",
           "email",
           "address",
+          "engineers",
+          "qualifications",
           "source_kind"
         ]
       },
@@ -299,7 +301,56 @@
           "source_kind": {
             "label": "Source",
             "format": "text"
+          },
+          "engineers": {
+            "label": "Engineers",
+            "format": "array"
+          },
+          "qualifications": {
+            "label": "Qualifications",
+            "format": "array"
           }
+        }
+      }
+    },
+    "engineers": {
+      "title": "Engineers",
+      "transformation": {
+        "unwind": ["engineers"],
+        "fields": ["business_name", "registration_number", "engineers.name", "engineers.status", "engineers.services", "engineers.telephone", "engineers.qualifications", "engineers.qualifications_status"]
+      },
+      "display": {
+        "component": "table",
+        "properties": {
+          "business_name": { "label": "Business", "format": "text" },
+          "registration_number": { "label": "Business registration", "format": "text" },
+          "engineers.name": { "label": "Engineer", "format": "text" },
+          "engineers.status": { "label": "Engineer status", "format": "text" },
+          "engineers.services": { "label": "Service types", "format": "array" },
+          "engineers.telephone": { "label": "Engineer phone", "format": "text" },
+          "engineers.qualifications": { "label": "Engineer qualifications", "format": "array" },
+          "engineers.qualifications_status": { "label": "Qualification extraction", "format": "text" }
+        }
+      }
+    },
+    "qualifications": {
+      "title": "Qualifications",
+      "transformation": {
+        "unwind": ["qualifications"],
+        "fields": ["business_name", "registration_number", "qualifications.engineer_name", "qualifications.category", "qualifications.service", "qualifications.natural_gas", "qualifications.lpg", "qualifications.building_regulations", "qualifications.is_group"]
+      },
+      "display": {
+        "component": "table",
+        "properties": {
+          "business_name": { "label": "Business", "format": "text" },
+          "registration_number": { "label": "Business registration", "format": "text" },
+          "qualifications.engineer_name": { "label": "Engineer", "format": "text" },
+          "qualifications.category": { "label": "Category", "format": "text" },
+          "qualifications.service": { "label": "Qualification / service", "format": "text" },
+          "qualifications.natural_gas": { "label": "Natural gas", "format": "boolean" },
+          "qualifications.lpg": { "label": "LPG", "format": "boolean" },
+          "qualifications.building_regulations": { "label": "Building regulations", "format": "boolean" },
+          "qualifications.is_group": { "label": "Category heading", "format": "boolean" }
         }
       }
     }
