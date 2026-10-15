@@ -27,7 +27,11 @@ export async function prepareSourceLookup(page: Page, registrationNumber: string
     await (await sourceSearchButton(page)).click({ trial: true });
     const checkMode = page.locator('#optCheck');
     if (!await checkMode.count()) throw new Error('SOURCE_CHECK_MODE_NOT_FOUND');
-    await checkMode.check();
+    const checkLabel = page.locator('label[for="optCheck"]').first();
+    if (await checkLabel.count() && await checkLabel.isVisible()) await checkLabel.click();
+    else if (await checkMode.isVisible()) await checkMode.check();
+    else await page.getByText('Check', { exact: true }).last().click();
+    if (!await checkMode.isChecked()) throw new Error('SOURCE_CHECK_MODE_NOT_SELECTED');
     const field = page.locator('#WidgetSearchTerm');
     await field.fill(registrationNumber);
     if (await field.inputValue() !== registrationNumber) throw new Error('SOURCE_REGISTRATION_VALUE_NOT_SET');

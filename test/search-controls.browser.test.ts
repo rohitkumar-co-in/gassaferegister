@@ -19,6 +19,20 @@ describe.skipIf(process.env.RUN_BROWSER_TESTS !== '1')('source Search button acc
             expect(await page.locator('#WidgetSearchTerm').inputValue()).toBe('947637');
         } finally { await browser.close(); }
     });
+    it('clicks the visible Check label when the custom radio input is hidden', async () => {
+        const browser = await chromium.launch({ channel: 'chrome', headless: true });
+        try {
+            const page = await browser.newPage();
+            await page.setContent(`<form id="FindAndCheckForm">
+                <input id="optFind" type="radio" name="mode" checked>
+                <label for="optCheck">Check</label><input id="optCheck" type="radio" name="mode" style="display:none">
+                <input id="WidgetSearchTerm" required>
+                <button type="submit" aria-label="Search">Search</button></form>`);
+            await prepareSourceLookup(page, '947637');
+            expect(await page.locator('#optCheck').isChecked()).toBe(true);
+            expect(await page.locator('#WidgetSearchTerm').inputValue()).toBe('947637');
+        } finally { await browser.close(); }
+    });
     it('handles a late consent prompt before setting Check mode and registration value', async () => {
         const browser = await chromium.launch({ channel: 'chrome', headless: true });
         try {
