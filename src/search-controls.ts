@@ -41,5 +41,6 @@ export async function prepareSourceLookup(page: Page, registrationNumber: string
     await field.fill(registrationNumber);
     await dismissVisibleSourceDialogs(page);
     if (await field.inputValue() !== registrationNumber) throw new Error('SOURCE_REGISTRATION_VALUE_NOT_SET');
+    await dismissVisibleSourceDialogs(page);
     await (await sourceSearchButton(page)).click({ trial: true });
 }

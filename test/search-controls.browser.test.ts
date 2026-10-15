@@ -47,6 +47,7 @@ describe.skipIf(process.env.RUN_BROWSER_TESTS !== '1')('source Search button acc
                 <div id="overlay" hidden style="position:fixed;inset:0;background:white;z-index:1000">
                 <button onclick="setTimeout(()=>{document.getElementById('WidgetSearchTerm').value='';document.getElementById('optFind').checked=true;document.getElementById('optCheck').checked=false;document.getElementById('overlay').hidden=true},100)">Allow all cookies</button></div>
                 <script>setTimeout(()=>{document.getElementById('overlay').hidden=false},150)</script>`);
+            await page.waitForTimeout(200);
             await prepareSourceLookup(page, '947637');
             expect(dismissed).toBe(1);
             expect(await page.locator('#optCheck').isChecked()).toBe(true);
@@ -65,6 +66,7 @@ describe.skipIf(process.env.RUN_BROWSER_TESTS !== '1')('source Search button acc
                 <div id="overlay" hidden style="position:fixed;inset:0;background:white;z-index:1000">
                 <button onclick="setTimeout(()=>{document.getElementById('WidgetSearchTerm').value='';document.getElementById('overlay').hidden=true},100)">Allow all cookies</button></div>
                 <script>setTimeout(()=>{document.getElementById('overlay').hidden=false;document.getElementById('submit').disabled=false},150)</script>`);
+            await page.waitForTimeout(200);
             await prepareSourceSearch(page, 'CB1 1JY', 'Domestic');
             await (await sourceSearchButton(page)).click();
             expect(dismissed).toBe(1);
