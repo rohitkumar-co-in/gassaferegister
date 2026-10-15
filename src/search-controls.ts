@@ -24,6 +24,20 @@ export async function prepareSourceSearch(page: Page, location: string, serviceT
     if (await field.inputValue() !== location) await field.fill(location);
 }
 
+/**
+ * Activate the verified submit button without making Playwright wait for the
+ * browser's full load event. The register can redirect the POST while some
+ * third-party resource remains pending; Playwright's normal click then times
+ * out even though the navigation itself has already happened.
+ */
+export async function submitSourceSearch(page: Page) {
+    await dismissVisibleSourceDialogs(page);
+    // Dispatching the verified native control preserves its submit handlers
+    // and form validation while allowing the caller to observe navigation
+    // independently from Playwright's full-load wait.
+    await (await sourceSearchButton(page)).dispatchEvent('click');
+}
+
 /** Switch the shared home-page widget to registration/name checking before searching. */
 export async function prepareSourceLookup(page: Page, registrationNumber: string) {
     // Consent may replace/reset the form. Resolve any late banner before

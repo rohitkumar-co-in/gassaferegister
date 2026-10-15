@@ -7,12 +7,11 @@ import { Actor } from 'apify';
 import { type Browser, type BrowserContext, chromium, type Page } from 'playwright';
 
 import { allowedCertificateExceptionUrl, type Input } from './config.js';
-import { parseSourceCookies } from './cookies.js';
 import { selectTown, type SourcePage, type SourceSession } from './crawler.js';
 import { assertSource } from './details.js';
 import { dismissVisibleSourceDialogs, installSourceDialogHandlers } from './dialogs.js';
 import { BASE, officialUrl } from './parser.js';
-import { prepareSourceLookup, prepareSourceSearch, sourceSearchButton } from './search-controls.js';
+import { prepareSourceLookup, prepareSourceSearch, sourceSearchButton, submitSourceSearch } from './search-controls.js';
 import { submitValidatedForm } from './search-form.js';
 
 export interface BrowserMetrics { network_requests: number; transferred_bytes: number; browser_user_agent: string; limit: string | null; dialogs_dismissed?: number; dialog_error?: string; imported_cookie_count?: number; proxy_country?: string; proxy_ip_fingerprint?: string }
@@ -62,14 +61,8 @@ export async function createBrowserSession(input: Required<Input>, liveMetrics: 
             }) as unknown as BrowserContext;
         }
         if (metrics.limit) { await close(); throw new Error(metrics.limit); }
-        // Never use the owner's stored browser session by default. This remains
-        // an explicit private-beta opt-in only; public runs must use their own
-        // clean session and must not inherit the developer's identity.
-        if (process.env.GAS_SAFE_USE_PRIVATE_COOKIES === 'true' && process.env.GAS_SAFE_COOKIES_JSON) {
-            const cookies = parseSourceCookies(process.env.GAS_SAFE_COOKIES_JSON);
-            try { await context.addCookies(cookies); } catch { throw new Error('Invalid source cookies: browser rejected import'); }
-            metrics.imported_cookie_count = cookies.length;
-        }
+        // Always start with a clean source session. Owner cookies can expire,
+        // disclose private identity, and make public runs non-reproducible.
         page = context.pages()[0] ?? await context.newPage();
         await installSourceDialogHandlers(page, () => {
             metrics.dialogs_dismissed = (metrics.dialogs_dismissed ?? 0) + 1;
@@ -209,10 +202,15 @@ export async function createBrowserSession(input: Required<Input>, liveMetrics: 
                             // Submit the observed public search form normally, without the optional AJAX pre-validation step.
                             HTMLFormElement.prototype.submit.call(form);
                         }); return; }
-                        await (await sourceSearchButton(page!)).click();
+                        await submitSourceSearch(page!);
                     };
                     await Promise.all([
-                        page!.waitForURL((url) => url.pathname !== '/', { waitUntil: 'domcontentloaded' }),
+                        page!.waitForFunction(() => window.location.pathname !== '/'
+                            || /Multiple matches were found|no (?:registered )?(?:businesses|results|matches) (?:were )?found|request unsuccessful|access denied/i.test(document.body.innerText),
+                        undefined, { timeout: 12000 }).catch(async () => {
+                            await check();
+                            throw new Error('SOURCE_SEARCH_DID_NOT_RETURN_RESULTS');
+                        }),
                         submit(),
                     ]);
                     await ready();

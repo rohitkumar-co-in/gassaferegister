@@ -2,7 +2,7 @@ import { chromium } from 'playwright';
 import { describe, expect, it } from 'vitest';
 
 import { installSourceDialogHandlers } from '../src/dialogs.js';
-import { prepareSourceLookup, prepareSourceSearch, sourceSearchButton } from '../src/search-controls.js';
+import { prepareSourceLookup, prepareSourceSearch, sourceSearchButton, submitSourceSearch } from '../src/search-controls.js';
 
 describe.skipIf(process.env.RUN_BROWSER_TESTS !== '1')('source Search button accessibility', () => {
     it('selects Check mode before entering a registration number', async () => {
@@ -86,6 +86,17 @@ describe.skipIf(process.env.RUN_BROWSER_TESTS !== '1')('source Search button acc
             await (await sourceSearchButton(page)).click();
             expect(await page.locator('body').getAttribute('data-searched')).toBe('yes');
             expect(await page.locator('body').getAttribute('data-wrong')).toBeNull();
+        } finally { await browser.close(); }
+    });
+    it('submits the verified form without coupling the click to the navigation load event', async () => {
+        const browser = await chromium.launch({ channel: 'chrome', headless: true });
+        try {
+            const page = await browser.newPage();
+            await page.setContent(`<form id="FindAndCheckForm" onsubmit="event.preventDefault();document.body.dataset.searched='yes'">
+                <input id="WidgetSearchTerm" required value="CB1 1JY">
+                <button type="submit" aria-label="Search">Search</button></form>`);
+            await submitSourceSearch(page);
+            expect(await page.locator('body').getAttribute('data-searched')).toBe('yes');
         } finally { await browser.close(); }
     });
 });
