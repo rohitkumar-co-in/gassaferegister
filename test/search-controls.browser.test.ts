@@ -19,6 +19,26 @@ describe.skipIf(process.env.RUN_BROWSER_TESTS !== '1')('source Search button acc
             expect(await page.locator('#WidgetSearchTerm').inputValue()).toBe('947637');
         } finally { await browser.close(); }
     });
+    it('handles a late consent prompt before setting Check mode and registration value', async () => {
+        const browser = await chromium.launch({ channel: 'chrome', headless: true });
+        try {
+            const page = await browser.newPage();
+            let dismissed = 0;
+            await installSourceDialogHandlers(page, () => { dismissed++; });
+            await page.setContent(`<form id="FindAndCheckForm">
+                <input id="optFind" type="radio" name="mode" checked>
+                <input id="optCheck" type="radio" name="mode">
+                <input id="WidgetSearchTerm" required>
+                <button type="submit" aria-label="Search">Search</button></form>
+                <div id="overlay" hidden style="position:fixed;inset:0;background:white;z-index:1000">
+                <button onclick="setTimeout(()=>{document.getElementById('WidgetSearchTerm').value='';document.getElementById('optFind').checked=true;document.getElementById('optCheck').checked=false;document.getElementById('overlay').hidden=true},100)">Allow all cookies</button></div>
+                <script>setTimeout(()=>{document.getElementById('overlay').hidden=false},150)</script>`);
+            await prepareSourceLookup(page, '947637');
+            expect(dismissed).toBe(1);
+            expect(await page.locator('#optCheck').isChecked()).toBe(true);
+            expect(await page.locator('#WidgetSearchTerm').inputValue()).toBe('947637');
+        } finally { await browser.close(); }
+    });
     it('fills the postcode after a late consent dialog clears it', async () => {
         const browser = await chromium.launch({ channel: 'chrome', headless: true });
         try {

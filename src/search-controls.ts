@@ -22,6 +22,9 @@ export async function prepareSourceSearch(page: Page, location: string, serviceT
 
 /** Switch the shared home-page widget to registration/name checking before searching. */
 export async function prepareSourceLookup(page: Page, registrationNumber: string) {
+    // Consent may replace/reset the form. Resolve any late banner before
+    // switching modes or filling the shared search field.
+    await (await sourceSearchButton(page)).click({ trial: true });
     const checkMode = page.locator('#optCheck');
     if (!await checkMode.count()) throw new Error('SOURCE_CHECK_MODE_NOT_FOUND');
     await checkMode.check();
