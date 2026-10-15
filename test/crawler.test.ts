@@ -17,6 +17,29 @@ const source = (duplicate = false): SourceSession => ({
     },
 });
 describe('complete bounded workflow', () => {
+    it('collects all 50 businesses across five ten-result pages', async () => {
+        const visits: number[] = [];
+        const page = (number: number) => ({
+            url: `https://www.gassaferegister.co.uk/findbusinessresults?Page=${number}`,
+            html: `<div data-testid="closestDistanceBusiness">Showing ${(number - 1) * 10 + 1} to ${number * 10} of 50</div>`
+                + Array.from({ length: 10 }, (_, offset) => {
+                    const id = (number - 1) * 10 + offset + 1;
+                    return `<div class="buscard"><span data-testid="businessName">Synthetic business ${id}</span><span data-testid="registrationNumber">${id}</span></div>`;
+                }).join('')
+                + (number < 5 ? `<a data-testid="pgNext" href="/findbusinessresults?Page=${number + 1}">Next</a>` : ''),
+        });
+        const result = await crawl({
+            async search() { return page(1); },
+            async visit(url) { const number = Number(new URL(url).searchParams.get('Page')); visits.push(number); return page(number); },
+        }, validateInput({ maxResults: 50, includeEngineers: false }), {
+            async record() { /* No cloud or billing in this test. */ },
+            async progress() { /* No storage in this test. */ },
+        });
+        expect(result.records).toHaveLength(50);
+        expect(new Set(result.records.map((record) => record.registration_number)).size).toBe(50);
+        expect(visits).toEqual([2, 3, 4, 5]);
+        expect(result.locations[0]).toMatchObject({ total_results: 50, total_pages: 5, pages_fetched: 5, pagination_exhausted: true, has_more: false });
+    });
     it('looks up one business by registration number and enriches its engineer record', async () => {
         const session: SourceSession = {
             async search() { throw new Error('Location search should not be used for direct lookup'); },

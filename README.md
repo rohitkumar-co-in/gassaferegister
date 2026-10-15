@@ -16,7 +16,9 @@ For local regression, `offlineTest` uses clearly labelled synthetic fixtures and
 }
 ```
 
-The Store defaults to 1 GB of run memory, a 120-second browser ceiling, and a 300-request safety limit. It requests Apify's GB residential proxy. Proxy and compute usage are billed separately by Apify. Resource limits reduce exposure but are not a fixed USD run-cost cap.
+The Store defaults to 1 GB of run memory, a 600-second browser ceiling, and a 1,500-request safety limit. It requests Apify's GB residential proxy. Proxy and compute usage are billed separately by Apify. Resource limits reduce exposure but are not a fixed USD run-cost cap.
+
+For a search showing 50 results across five pages, set `maxResults` to `50`. The default is `10`; earlier diagnostic runs explicitly requested only one result. A saved task or copied input can retain `maxResults: 1` or `maxPages: 1`, so remove those overrides for a full search. The `OUTPUT.data` record includes `requested_max_results` and `stop_reason` to distinguish a requested limit, the page ceiling, exhausted pagination, and a failure. A larger requested count can cost more and may still stop early at a resource or spending limit.
 
 ## Inputs
 

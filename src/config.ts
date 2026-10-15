@@ -52,9 +52,9 @@ export function validateInput(raw: Input) {
     // control the count without prematurely stopping when randomized pages overlap.
     if (maxPages !== undefined) normalized.maxPages = maxPages;
     if (includeEngineers !== undefined) normalized.includeEngineers = includeEngineers;
-    const input = { mode: 'offlineTest', location: 'CB1 1JY', serviceType: 'Domestic', useUkResidentialProxy: false,
-        browserProfile: 'camoufoxHeaded', proxyCountry: 'GB', proxyService: 'residential', allowUnblockerCertificateException: false,
-        maxRuntimeSeconds: 90, maxNetworkRequests: 80, loadPageAssets: false, settleSeconds: 0, maxTransferMegabytes: 5,
+    const input = { mode: 'scrape', location: 'CB1 1JY', serviceType: 'Domestic', useUkResidentialProxy: true,
+        browserProfile: 'patchrightHeaded', proxyCountry: 'GB', proxyService: 'residential', allowUnblockerCertificateException: false,
+        maxRuntimeSeconds: 600, maxNetworkRequests: 1500, loadPageAssets: false, settleSeconds: 5, maxTransferMegabytes: 25,
         operation: 'searchBusinesses', registrationNumber: '', locations: [], locationCounty: '', searchMethod: 'siteUi', page: 1, maxPages: 25, maxResults: 10, includeEngineers: true,
         includeQualifications: true, maxEngineerPages: 10, maxEngineersPerBusiness: 100, requestDelayMillis: 1000,
         ...normalized } as Required<Input>;
@@ -79,7 +79,7 @@ export function validateInput(raw: Input) {
     if (input.allowUnblockerCertificateException && (!['probe', 'scrape'].includes(input.mode) || !input.useUkResidentialProxy || input.proxyService !== 'unblocker')) {
         throw new Error('Invalid certificate exception: requires live Unblocker probe');
     }
-    for (const [key, min, max] of [['maxRuntimeSeconds', 15, 180], ['maxNetworkRequests', 10, 300], ['settleSeconds', 0, 10], ['maxTransferMegabytes', 1, 10]] as const) {
+    for (const [key, min, max] of [['maxRuntimeSeconds', 15, 1800], ['maxNetworkRequests', 10, 5000], ['settleSeconds', 0, 10], ['maxTransferMegabytes', 1, 100]] as const) {
         if (!Number.isInteger(input[key]) || input[key] < min || input[key] > max) throw new Error(`Invalid ${key}`);
     }
     if (!Array.isArray(input.locations) || input.locations.length > 10 || input.locations.some((value) => typeof value !== 'string' || !value.trim() || value.length > 120)) throw new Error('Invalid locations');

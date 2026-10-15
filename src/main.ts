@@ -97,7 +97,12 @@ try {
     summary.error = metrics.limit ?? result.locations.find((location) => location.error)?.error ?? null;
     if (summary.status !== 'succeeded') await session?.diagnose().catch(() => { /* Diagnostics must not mask source failures. */ });
     const location = result.locations[0];
-    const apiData = { page: location?.page ?? input.page, has_more: location?.has_more ?? false,
+    let stopReason = 'PAGE_LIMIT_REACHED';
+    if (result.locations.every((entry) => entry.pagination_exhausted)) stopReason = 'PAGINATION_EXHAUSTED';
+    if (records.length >= input.maxResults) stopReason = 'MAX_RESULTS_REACHED';
+    if (summary.error) stopReason = summary.error;
+    const apiData = { requested_max_results: input.maxResults, stop_reason: stopReason,
+        page: location?.page ?? input.page, has_more: location?.has_more ?? false,
         location: input.operation === 'getBusinessEngineers' ? input.registrationNumber : input.location,
         last_page: location?.last_page, max_pages: location?.max_pages ?? input.maxPages,
         businesses: records, total_pages: location?.total_pages, service_type: input.serviceType,

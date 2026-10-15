@@ -30,10 +30,10 @@ describe('data and budget safety', () => {
         expect(() => officialUrl('https://evil.example/')).toThrow();
         expect(() => officialUrl('https://secret@gassaferegister.co.uk/')).toThrow();
     });
-    it('defaults to offline and rejects unlimited budgets', () => {
-        expect(validateInput({}).mode).toBe('offlineTest');
+    it('defaults to the public live configuration and rejects unlimited budgets', () => {
+        expect(validateInput({}).mode).toBe('scrape');
         expect(validateInput({}).location).toBe('CB1 1JY');
-        expect(validateInput({}).useUkResidentialProxy).toBe(false);
+        expect(validateInput({}).useUkResidentialProxy).toBe(true);
         expect(validateInput({}).maxPages).toBe(25);
         expect(validateInput({ maxResults: 50 })).toMatchObject({ maxResults: 50, maxPages: 25 });
         expect(validateInput({ maxResults: 50, maxPages: 2 })).toMatchObject({ maxResults: 50, maxPages: 2 });
@@ -43,7 +43,8 @@ describe('data and budget safety', () => {
             .toMatchObject({ operation: 'getBusinessEngineers', registrationNumber: '000001', includeEngineers: true, maxResults: 1 });
         expect(validateInput({ maxNetworkRequests: 300 }).maxNetworkRequests).toBe(300);
         expect(() => validateInput({ maxRuntimeSeconds: 0 })).toThrow();
-        expect(() => validateInput({ maxNetworkRequests: 301 })).toThrow();
+        expect(validateInput({ maxNetworkRequests: 1500, maxRuntimeSeconds: 600, maxTransferMegabytes: 25 })).toMatchObject({ maxNetworkRequests: 1500, maxRuntimeSeconds: 600, maxTransferMegabytes: 25 });
+        expect(() => validateInput({ maxNetworkRequests: 5001 })).toThrow();
         expect(() => validateInput({ maxNetworkRequests: 10000 })).toThrow();
     });
 });
