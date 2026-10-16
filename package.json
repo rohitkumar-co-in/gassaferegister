@@ -2,7 +2,7 @@
   "name": "gas-safe-register-uk",
   "version": "0.0.1",
   "type": "module",
-  "description": "Budget-limited Gas Safe Register access probe",
+  "description": "Search the UK Gas Safe Register by town or postcode and collect business, engineer, and qualification data.",
   "engines": {
     "node": ">=22"
   },

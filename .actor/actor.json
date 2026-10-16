@@ -3,7 +3,7 @@
   "actorSpecification": 1,
   "name": "gas-safe-register-uk",
   "title": "Gas Safe Register UK Business Search",
-  "description": "Search Gas Safe Register by UK town or postcode. Collect public business details and, optionally, registered engineer and qualification information. Results are bounded, may be incomplete, and depend on live source availability.",
+  "description": "Search the Gas Safe Register by UK town or postcode. Business records $0.10 each; engineer details +$0.05 and qualifications +$0.05 per business when returned. Apify platform usage is extra. Results may be incomplete.",
   "version": "0.0",
   "buildTag": "latest",
   "meta": {

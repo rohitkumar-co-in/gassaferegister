@@ -13,7 +13,7 @@
     "serviceType": {
       "title": "Service type",
       "type": "string",
-      "description": "Public search category.",
+      "description": "Choose the Gas Safe Register search category.",
       "enum": [
         "Domestic",
         "Commercial"
@@ -28,8 +28,8 @@
       "maximum": 250,
       "description": "Maximum unique businesses to return, deduplicated by registration number. The Actor automatically reads enough listing pages (about 10 businesses per page) to reach this count, up to 250."
     },
-    "includeEngineers": { "title": "Include engineers", "description": "Collect public engineer names, status and contact details.", "type": "boolean", "default": true },
-    "includeQualifications": { "title": "Include qualifications", "description": "Collect Natural gas, LPG and Building regulations qualifications. Requires Include engineers.", "type": "boolean", "default": true }
+    "includeEngineers": { "title": "Include engineers", "description": "Collect public engineer names, displayed status and contact details. Adds $0.05 per business when engineer details are returned.", "type": "boolean", "default": true },
+    "includeQualifications": { "title": "Include qualifications", "description": "Collect Natural Gas, LPG and Building Regulations qualification details. Requires Include engineers. Adds $0.05 per business when qualification details are returned.", "type": "boolean", "default": true }
   },
   "required": []
 }
