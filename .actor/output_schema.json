@@ -2,17 +2,30 @@
   "actorOutputSchemaVersion": 1,
   "title": "Gas Safe results",
   "properties": {
-    "report": {
-      "type": "string", "title": "View readable results — businesses, engineers and qualifications",
-      "template": "{{links.apiDefaultKeyValueStoreUrl}}/records/REPORT.html"
-    },
-    "businessesCsv": { "type": "string", "title": "Businesses spreadsheet (CSV)", "template": "{{links.apiDefaultKeyValueStoreUrl}}/records/BUSINESSES.csv" },
-    "engineersCsv": { "type": "string", "title": "Engineers spreadsheet (CSV)", "template": "{{links.apiDefaultKeyValueStoreUrl}}/records/ENGINEERS.csv" },
-    "qualificationsCsv": { "type": "string", "title": "Qualifications spreadsheet (CSV)", "template": "{{links.apiDefaultKeyValueStoreUrl}}/records/QUALIFICATIONS.csv" },
     "dataset": {
       "type": "string",
       "title": "Businesses",
       "template": "{{links.apiDefaultDatasetUrl}}/items?format=html&view=overview"
+    },
+    "report": {
+      "type": "string",
+      "title": "View readable results \u2014 businesses, engineers and qualifications",
+      "template": "{{links.apiDefaultKeyValueStoreUrl}}/records/REPORT.html"
+    },
+    "businessesCsv": {
+      "type": "string",
+      "title": "Businesses spreadsheet (CSV)",
+      "template": "{{links.apiDefaultKeyValueStoreUrl}}/records/BUSINESSES.csv"
+    },
+    "engineersCsv": {
+      "type": "string",
+      "title": "Engineers spreadsheet (CSV)",
+      "template": "{{links.apiDefaultKeyValueStoreUrl}}/records/ENGINEERS.csv"
+    },
+    "qualificationsCsv": {
+      "type": "string",
+      "title": "Qualifications spreadsheet (CSV)",
+      "template": "{{links.apiDefaultKeyValueStoreUrl}}/records/QUALIFICATIONS.csv"
     }
   }
 }
