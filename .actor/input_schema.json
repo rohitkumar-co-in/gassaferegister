@@ -6,7 +6,7 @@
     "location": {
       "title": "Town or postcode",
       "type": "string",
-      "description": "One UK town or postcode. If a town is ambiguous, enter Town, County (for example, London, Middlesex).",
+      "description": "One UK town or postcode. Plain London selects the London, Middlesex entry; enter London, County Londonderry for the other source entry. For other ambiguous towns, enter Town, County.",
       "default": "CB1 1JY",
       "editor": "textfield"
     },

@@ -158,13 +158,17 @@ describe('complete bounded workflow', () => {
         expect(selectTown(['Cambridge - CAMBRIDGESHIRE', 'Cambridge - GLOUCESTERSHIRE'], 'Cambridge', 'Gloucestershire')).toBe(1);
     });
     it('reads London town choices across source label formats and preserves link indices', () => {
-        const labels = ['Other - COUNTY', '  London – GREATER LONDON  ', 'London (City of London)', 'Londonderry - COUNTY'];
+        const labels = ['Other - COUNTY', '  London – GREATER LONDON  ', 'London (City of London)', 'London Colney - HERTFORDSHIRE', 'Londonderry - COUNTY'];
         expect(getTownOptions(labels, 'london')).toEqual([
             { text: 'London – GREATER LONDON', index: 1 },
             { text: 'London (City of London)', index: 2 },
         ]);
         expect(selectTown(['London – GREATER LONDON', 'London (City of London)'], 'LONDON', 'greater london')).toBe(0);
         expect(selectTown(['London (City of London)'], 'London', 'City of London')).toBe(0);
+    });
+    it('resolves plain London to the register entry for the UK capital', () => {
+        expect(selectTown(['London - COUNTY LONDONDERRY', 'London - MIDDLESEX'], 'London', '')).toBe(1);
+        expect(selectTown(['London - COUNTY LONDONDERRY', 'London - MIDDLESEX'], 'London', 'County Londonderry')).toBe(0);
     });
     it('accepts Town, County in the single public location field for ambiguous towns', () => {
         expect(validateInput({ location: ' London, Middlesex ' })).toMatchObject({ location: 'London', locationCounty: 'Middlesex' });

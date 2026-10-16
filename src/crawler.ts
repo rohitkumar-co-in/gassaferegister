@@ -69,10 +69,10 @@ function parseTownOption(value: string, location: string) {
     const prefix = text.match(new RegExp(`^${townPattern}`, 'i'))?.[0];
     if (!prefix) return null;
     const remainder = text.slice(prefix.length);
-    // The register has rendered location labels with hyphens, en/em dashes,
-    // commas, and parenthesized counties. Also tolerate whitespace-only
-    // separators where accessible text joins adjacent elements.
-    if (!/^(?:\s|[-–—,|:(])/.test(remainder)) return null;
+    // Require a real label separator so "London Apprentice" and
+    // "London Colney" are not mistaken for the exact town "London".
+    // The register uses hyphens; tolerate its other common punctuation too.
+    if (!/^(?:\s*[-–—,|:(])/.test(remainder)) return null;
     const countyName = remainder.replace(/^\s*(?:[-–—,|:]\s*|\(\s*)?/, '').replace(/\s*\)\s*$/, '').trim();
     return { text, county: countyName };
 }
@@ -87,6 +87,14 @@ export function selectTown(matches: string[], location: string, county: string):
     const candidates = matches.map((text, index) => ({ text, index, parsed: parseTownOption(text, location) }))
         .filter((match): match is typeof match & { parsed: NonNullable<typeof match.parsed> } => match.parsed !== null)
         .filter(({ parsed }) => !county || normalizeTownText(parsed.county) === normalizeTownText(county));
+    // The register can return both London in County Londonderry and London
+    // in Middlesex. A plain "London" conventionally means the UK capital;
+    // select that exact option when present, while preserving explicit county
+    // selection and ambiguity errors for every other town.
+    if (!county && normalizeTownText(location) === 'london') {
+        const capital = candidates.filter(({ parsed }) => normalizeTownText(parsed.county) === 'middlesex');
+        if (capital.length && new Set(capital.map(({ text }) => normalizeTownText(text))).size === 1) return capital[0]!.index;
+    }
     const unique = new Set(candidates.map(({ text }) => normalizeTownText(text)));
     if (candidates.length && unique.size === 1) return candidates[0]!.index;
     throw new Error('SOURCE_AMBIGUOUS_LOCATION: provide locationCounty or a full postcode');

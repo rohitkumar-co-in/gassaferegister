@@ -18,7 +18,7 @@ A business with both engineer and qualification data returned costs $0.20 in eve
 ## Start a search
 
 1. Open **Input → Form** in Apify Console.
-2. Enter a town or postcode.
+2. Enter a town or postcode. Plain **London** selects the register's **London, Middlesex** entry; enter **London, County Londonderry** to select the other source entry. For other ambiguous towns, enter **Town, County**.
 3. Choose **Domestic** or **Commercial** service.
 4. Set the maximum number of unique businesses (1–250; default 10).
 5. Choose whether to include engineers and qualifications. Qualifications require engineers.
@@ -38,7 +38,7 @@ The Actor reports enrichment status and errors so partial detail collection is v
 
 ## Errors and partial results
 
-Confirmed no-results searches can complete successfully with zero businesses. Ambiguous towns, blocked pages, changed page layouts, invalid requests, and exhausted resource limits are reported as errors or partial outcomes. Previously saved businesses remain available if a later page or detail request fails. Limited retries apply only to selected transient navigation failures; source blocks and validation or resource-limit errors are not retried.
+Confirmed no-results searches can complete successfully with zero businesses. Ambiguous towns other than plain London, blocked pages, changed page layouts, invalid requests, and exhausted resource limits are reported as errors or partial outcomes. Previously saved businesses remain available if a later page or detail request fails. Limited retries apply only to selected transient navigation failures; source blocks and validation or resource-limit errors are not retried.
 
 Listing order can change between requests. Deduplication prevents repeated registration numbers in a run, but traversing every page does not guarantee that every business was found. Use a fresh run when changing the search input.
 
