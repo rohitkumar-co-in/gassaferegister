@@ -50,6 +50,34 @@
       "contentTypes": [
         "application/json"
       ]
+    },
+    "report": {
+      "title": "Readable results",
+      "key": "REPORT.html",
+      "contentTypes": [
+        "text/html"
+      ]
+    },
+    "businessesCsv": {
+      "title": "Businesses spreadsheet",
+      "key": "BUSINESSES.csv",
+      "contentTypes": [
+        "text/csv"
+      ]
+    },
+    "engineersCsv": {
+      "title": "Engineers spreadsheet",
+      "key": "ENGINEERS.csv",
+      "contentTypes": [
+        "text/csv"
+      ]
+    },
+    "qualificationsCsv": {
+      "title": "Qualifications spreadsheet",
+      "key": "QUALIFICATIONS.csv",
+      "contentTypes": [
+        "text/csv"
+      ]
     }
   }
 }

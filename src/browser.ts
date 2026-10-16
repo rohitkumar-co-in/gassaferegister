@@ -205,9 +205,9 @@ export async function createBrowserSession(input: Required<Input>, liveMetrics: 
                         await submitSourceSearch(page!);
                     };
                     await Promise.all([
-                        page!.waitForFunction(() => window.location.pathname !== '/'
+                        page!.waitForFunction(() => Boolean(document.querySelector('.buscard'))
                             || /Multiple matches were found|no (?:registered )?(?:businesses|results|matches) (?:were )?found|request unsuccessful|access denied/i.test(document.body.innerText),
-                        undefined, { timeout: 12000 }).catch(async () => {
+                        undefined, { timeout: 30000 }).catch(async () => {
                             await check();
                             throw new Error('SOURCE_SEARCH_DID_NOT_RETURN_RESULTS');
                         }),

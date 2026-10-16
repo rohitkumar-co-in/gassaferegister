@@ -8,7 +8,7 @@
   "buildTag": "latest",
   "meta": {
     "templateId": "ts-empty",
-    "generatedBy": "Codex with GPT-5"
+    "generatedBy": "Codex with GPT-6"
   },
   "inputSchema": "./input_schema.json",
   "outputSchema": "./output_schema.json",

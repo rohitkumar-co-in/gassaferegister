@@ -8,6 +8,7 @@ import { type Input, validateInput } from './config.js';
 import { type Business, crawl, getRunStatus, type LocationResult, type SourceSession } from './crawler.js';
 import { classifyError } from './errors.js';
 import { httpProbe } from './http-probe.js';
+import { businessDisplay, renderReport, resultTables, tableCsv } from './presentation.js';
 
 await Actor.init();
 const metrics: BrowserMetrics = { network_requests: 0, transferred_bytes: 0, browser_user_agent: '', limit: null };
@@ -47,6 +48,7 @@ try {
         records = existing.items as Business[];
     }
     summary.status = 'running';
+    await Actor.setStatusMessage(`Searching ${input.location}; collecting up to ${input.maxResults} businesses${input.includeEngineers ? ' with engineer details' : ''}.`);
     await persist();
     let source: SourceSession;
     if (input.mode === 'offlineTest') {
@@ -86,8 +88,9 @@ try {
         canCreateRecord,
         onRetry() { summary.retry_count++; },
         async record(record) {
-            await Actor.pushData(record);
+            await Actor.pushData(businessDisplay(record));
             records.push(record);
+            await Actor.setStatusMessage(`Collected ${records.length} of up to ${input.maxResults} businesses. Engineer extraction: ${record.enrichment_status}.`);
             await persist();
         },
         async progress(locations) { summary.locations = locations; await persist(); },
@@ -125,5 +128,11 @@ try {
 } finally {
     await session?.close();
     await persist();
+    await Actor.setStatusMessage(`${summary.status.toUpperCase()}: ${records.length} businesses collected.${summary.error ? ` Reason: ${summary.error}.` : ''} Open Output for tables and spreadsheet downloads.`);
+    const tables = resultTables(records);
+    await Actor.setValue('REPORT.html', renderReport(records, summary.status, summary.error), { contentType: 'text/html; charset=utf-8' });
+    for (const [name, rows] of Object.entries(tables)) {
+        await Actor.setValue(`${name.toUpperCase()}.csv`, tableCsv(rows), { contentType: 'text/csv; charset=utf-8' });
+    }
 }
 await Actor.exit({ exitCode: summary.status === 'failed' ? 1 : 0 });

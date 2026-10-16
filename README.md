@@ -6,7 +6,9 @@ Search the public Gas Safe Register by UK town or postcode. Export canonical bus
 
 ## Quick start
 
-For local regression, `offlineTest` uses clearly labelled synthetic fixtures and makes no source or proxy requests. The public input form asks for a town or postcode, service type, and maximum number of unique businesses. Listing depth, engineer and qualification enrichment, navigation pacing, browser, and proxy settings use managed defaults so users do not need to tune implementation details.
+Open the **Input → Form** tab, enter a town or postcode, select the service type and number of businesses, choose whether to include engineers and qualifications, and click **Start**. The default is 10 businesses with both detail options enabled. Listing depth, navigation pacing, browser and proxy settings are managed automatically.
+
+The JSON example below is only for API integrations; Console users do not need it.
 
 ```json
 {
@@ -16,7 +18,7 @@ For local regression, `offlineTest` uses clearly labelled synthetic fixtures and
 }
 ```
 
-The Store defaults to 1 GB of run memory, a 600-second browser ceiling, and a 1,500-request safety limit. It requests Apify's GB residential proxy. Proxy and compute usage are billed separately by Apify. Resource limits reduce exposure but are not a fixed USD run-cost cap.
+The Store uses 1 GB of run memory. Browser runtime, request and transfer ceilings are calculated automatically from the requested business count and selected enrichment. For the default 10 businesses with full enrichment these ceilings are 720 seconds, 1,800 requests and 50 MB. The platform timeout defaults to unlimited; the internal browser ceiling still stops the crawl. It requests Apify's GB residential proxy. Check the current Pricing tab for Actor fees and whether platform usage is included. Resource limits reduce exposure but are not a fixed USD run-cost cap.
 
 For a search showing 50 results across five pages, set `maxResults` to `50`. The default is `10`; earlier diagnostic runs explicitly requested only one result. A saved task or copied input can retain `maxResults: 1` or `maxPages: 1`, so remove those overrides for a full search. The `OUTPUT.data` record includes `requested_max_results` and `stop_reason` to distinguish a requested limit, the page ceiling, exhausted pagination, and a failure. A larger requested count can cost more and may still stop early at a resource or spending limit.
 
@@ -24,7 +26,7 @@ For a search showing 50 results across five pages, set `maxResults` to `50`. The
 
 - `location`: one UK town or postcode; default `CB1 1JY`. If a town is ambiguous, enter `Town, County` (for example, `London, Middlesex`) or use a full postcode.
 - `serviceType`: Domestic or Commercial; default Domestic.
-- `maxResults`: maximum unique business records, 1–250; default 10. The Actor continues through listing pages until it reaches this count or the internal 25-page safety ceiling; duplicate results can mean fewer than requested. API callers may set `maxPages` to impose a lower page limit. Engineer-enrichment, pacing, browser, proxy, and resource-limit settings use managed defaults and are hidden from the standard input form.
+- `maxResults`: maximum unique business records, 1–250; default 10. The Actor continues through listing pages until it reaches this count or the internal 25-page safety ceiling; duplicate results can mean fewer than requested. API callers may set `maxPages` to impose a lower page limit. Use Include engineers and Include qualifications checkboxes to choose detail depth. Pacing, browser, proxy and automatically sized resource limits remain managed internally.
 
 ### API operations
 
@@ -46,15 +48,15 @@ Each qualification contains `category`, `service`, `natural_gas`, `lpg`, `buildi
 
 `enrichment_status`, `enrichment_error`, `engineers_truncated` and per-engineer qualification status make partial data explicit. An inaccessible detail page preserves the business record, marks enrichment failed/partial, and stops further requests on a detected source block or resource limit.
 
-The Output tab has separate Businesses, Engineers, and Qualifications views. Engineers shows an expandable list of engineers with their status and nested qualifications. Qualifications shows an expandable qualification list with the engineer's name and the Natural gas, LPG, and Building regulations flags. Businesses places Engineers before Qualifications; the two arrays retain their existing API field names.
+Use the Form tab: enter a town/postcode, select Domestic or Commercial, choose Maximum unique businesses, then choose the two enrichment checkboxes and click Start. No JSON editing is needed. The Output tab has separate Businesses, Engineers and Qualifications table views. Business rows show a readable address, engineer names and counts. Engineer and qualification views expand the data into individual rows. The readable results link opens all three full tables; separate CSV links open in Excel or other spreadsheets.
 
-The `RESULTS` key-value record contains businesses plus per-location pagination metadata. `RUN-SUMMARY` contains status, errors, request count, observed transfer, timestamps and page statistics. Dataset exports support JSON, CSV and Excel through Apify. Nested engineer/qualification arrays are best exported as JSON.
+The `RESULTS` key-value record contains businesses plus per-location pagination metadata. `RUN-SUMMARY` contains status, errors, request count, observed transfer, timestamps and page statistics. Dataset exports support JSON, CSV and Excel through Apify. Use the separate flat Engineers and Qualifications CSV downloads for spreadsheets; the nested API fields remain available for integrations.
 
 ## Coverage and failures
 
 The source randomizes ordering on each page request. Walking all pages can repeat businesses and omit others. Results are deduplicated by registration number; `duplicates_skipped` is reported per location. `pagination_exhausted` only means all available listing pages in that traversal were processed, **not** that every business was collected. `completeness_guaranteed` is always false.
 
-Only an explicit no-results message is accepted as empty; a confirmed empty search is a successful run with zero records. Block pages, unknown layouts, ambiguous locations and out-of-range pages produce explicit errors. Ambiguous town errors include the source's matching choices and accept a disambiguation in the same location field as `Town, County`; the Actor never guesses between places. Earlier records remain available when a later request fails. Late-arriving Cookiebot and survey dialogs are handled before ordinary browser actions. The Actor retries an idempotent detail/listing-page visit once after a narrow set of transient transport failures, with a short delay. It does not retry searches, source blocks, validation failures, or resource-limit errors, and does not rotate proxies or use external CAPTCHA services.
+Only an explicit no-results message is accepted as empty; a confirmed empty search is a successful run with zero records. Block pages, unknown layouts, ambiguous locations and out-of-range pages produce explicit errors. Ambiguous town errors include the source's matching choices and accept a disambiguation in the same location field as `Town, County`; the Actor never guesses between places. Earlier records remain available when a later request fails. Late-arriving Cookiebot and survey dialogs are handled before ordinary browser actions. A stalled search or transient search transport failure gets one fresh form attempt. An idempotent detail/listing-page visit gets one retry after a narrow set of transient transport failures. Source blocks, validation failures and resource-limit errors are not retried. The Actor does not rotate proxies or use external CAPTCHA services. The readable report and spreadsheet exports preserve any collected records and show partial/failed status.
 
 Runs can be resurrected with unchanged input. Existing canonical dataset rows are loaded and skipped on subsequent traversals. There is no guarantee that randomized source ordering stays stable after restart. A fresh run is required for changed input. Dataset writes are append-only; platform write ambiguity can still require consumer deduplication by registration number.
 

@@ -86,7 +86,15 @@ export async function crawl(session: SourceSession, input: Required<Input>, hook
             duplicates_skipped: 0, pagination_exhausted: false, status: 'running', error: null };
         locations.push(info);
         try {
-            let current = lookup ? await session.lookup!(input.registrationNumber) : await session.search(location, input.locationCounty);
+            let current: SourcePage;
+            try {
+                current = lookup ? await session.lookup!(input.registrationNumber) : await session.search(location, input.locationCounty);
+            } catch (error) {
+                // One fresh form attempt for transient search/transport failure; never retry a source denial.
+                if (classifyError(error) !== 'SOURCE_SEARCH_DID_NOT_RETURN_RESULTS' && !isRetryableVisitError(error)) throw error;
+                hooks.onRetry?.();
+                current = lookup ? await session.lookup!(input.registrationNumber) : await session.search(location, input.locationCounty);
+            }
             if (input.page !== 1) {
                 const first = parseBusinesses(current.html);
                 if (first.total_results !== null && input.page > Math.max(1, Math.ceil(first.total_results / 10))) throw new Error('SOURCE_PAGE_OUT_OF_RANGE');

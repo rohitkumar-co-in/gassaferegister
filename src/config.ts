@@ -54,7 +54,7 @@ export function validateInput(raw: Input) {
     if (includeEngineers !== undefined) normalized.includeEngineers = includeEngineers;
     const input = { mode: 'scrape', location: 'CB1 1JY', serviceType: 'Domestic', useUkResidentialProxy: true,
         browserProfile: 'patchrightHeaded', proxyCountry: 'GB', proxyService: 'residential', allowUnblockerCertificateException: false,
-        maxRuntimeSeconds: 600, maxNetworkRequests: 1500, loadPageAssets: false, settleSeconds: 5, maxTransferMegabytes: 25,
+        maxRuntimeSeconds: 1800, maxNetworkRequests: 5000, loadPageAssets: false, settleSeconds: 5, maxTransferMegabytes: 100,
         operation: 'searchBusinesses', registrationNumber: '', locations: [], locationCounty: '', searchMethod: 'siteUi', page: 1, maxPages: 25, maxResults: 10, includeEngineers: true,
         includeQualifications: true, maxEngineerPages: 10, maxEngineersPerBusiness: 100, requestDelayMillis: 1000,
         ...normalized } as Required<Input>;
@@ -92,6 +92,12 @@ export function validateInput(raw: Input) {
         if (!Number.isInteger(input[key]) || input[key] < min || input[key] > max) throw new Error(`Invalid ${key}`);
     }
     if (input.includeQualifications && !input.includeEngineers) input.includeQualifications = false;
+    // GUI users choose result count, not transport budgets. Explicit API ceilings remain authoritative.
+    let detailFactor = 0.1;
+    if (input.includeEngineers) detailFactor = input.includeQualifications ? 1 : 0.5;
+    if (raw.maxRuntimeSeconds === undefined) input.maxRuntimeSeconds = Math.min(18000, Math.max(300, Math.ceil(120 + input.maxResults * 60 * detailFactor)));
+    if (raw.maxNetworkRequests === undefined) input.maxNetworkRequests = Math.min(50000, Math.max(500, Math.ceil(300 + input.maxResults * 150 * detailFactor)));
+    if (raw.maxTransferMegabytes === undefined) input.maxTransferMegabytes = Math.min(1500, Math.max(15, Math.ceil(10 + input.maxResults * 4 * detailFactor)));
     input.locations = input.locations.map((value) => value.trim());
     input.location = input.location.trim();
     // Keep the public form simple: users can disambiguate a town in the same

@@ -235,6 +235,18 @@
       },
       "engineers_truncated": {
         "type": "boolean"
+      },
+      "full_address": {
+        "type": "string"
+      },
+      "engineer_names": {
+        "type": "string"
+      },
+      "engineer_count": {
+        "type": "integer"
+      },
+      "qualification_count": {
+        "type": "integer"
       }
     },
     "required": [
@@ -269,10 +281,11 @@
           "registration_number",
           "telephone",
           "email",
-          "address",
-          "engineers",
-          "qualifications",
-          "source_kind"
+          "full_address",
+          "engineer_count",
+          "engineer_names",
+          "qualification_count",
+          "enrichment_status"
         ]
       },
       "display": {
@@ -294,21 +307,25 @@
             "label": "Email",
             "format": "text"
           },
-          "address": {
+          "full_address": {
             "label": "Address",
-            "format": "object"
-          },
-          "source_kind": {
-            "label": "Source",
             "format": "text"
           },
-          "engineers": {
+          "engineer_count": {
             "label": "Engineers",
-            "format": "array"
+            "format": "number"
           },
-          "qualifications": {
+          "engineer_names": {
+            "label": "Engineer names",
+            "format": "text"
+          },
+          "qualification_count": {
             "label": "Qualifications",
-            "format": "array"
+            "format": "number"
+          },
+          "enrichment_status": {
+            "label": "Extraction status",
+            "format": "text"
           }
         }
       }
@@ -316,31 +333,114 @@
     "engineers": {
       "title": "Engineers",
       "transformation": {
-        "fields": ["business_name", "registration_number", "engineers", "enrichment_status", "engineers_truncated"]
+        "fields": [
+          "business_name",
+          "registration_number",
+          "engineers"
+        ],
+        "unwind": [
+          "engineers"
+        ],
+        "flatten": [
+          "engineers"
+        ],
+        "omit": [
+          "engineers.qualifications",
+          "engineers.qualifications_url"
+        ]
       },
       "display": {
         "component": "table",
         "properties": {
-          "business_name": { "label": "Business", "format": "text" },
-          "registration_number": { "label": "Business registration", "format": "text" },
-          "engineers": { "label": "Engineer details (expand)", "format": "array" },
-          "enrichment_status": { "label": "Engineer extraction", "format": "text" },
-          "engineers_truncated": { "label": "More engineers omitted", "format": "boolean" }
+          "business_name": {
+            "label": "Business",
+            "format": "text"
+          },
+          "registration_number": {
+            "label": "Business registration",
+            "format": "text"
+          },
+          "engineers.name": {
+            "label": "Engineer",
+            "format": "text"
+          },
+          "engineers.status": {
+            "label": "Status",
+            "format": "text"
+          },
+          "engineers.telephone": {
+            "label": "Phone",
+            "format": "text"
+          },
+          "engineers.services": {
+            "label": "Services",
+            "format": "array"
+          },
+          "engineers.qualifications_status": {
+            "label": "Qualification extraction",
+            "format": "text"
+          },
+          "engineers.error": {
+            "label": "Error",
+            "format": "text"
+          }
         }
       }
     },
     "qualifications": {
       "title": "Qualifications",
       "transformation": {
-        "fields": ["business_name", "registration_number", "qualifications", "enrichment_status"]
+        "fields": [
+          "business_name",
+          "registration_number",
+          "qualifications"
+        ],
+        "unwind": [
+          "qualifications"
+        ],
+        "flatten": [
+          "qualifications"
+        ]
       },
       "display": {
         "component": "table",
         "properties": {
-          "business_name": { "label": "Business", "format": "text" },
-          "registration_number": { "label": "Business registration", "format": "text" },
-          "qualifications": { "label": "Qualification details by engineer (expand)", "format": "array" },
-          "enrichment_status": { "label": "Extraction status", "format": "text" }
+          "business_name": {
+            "label": "Business",
+            "format": "text"
+          },
+          "registration_number": {
+            "label": "Business registration",
+            "format": "text"
+          },
+          "qualifications.engineer_name": {
+            "label": "Engineer",
+            "format": "text"
+          },
+          "qualifications.category": {
+            "label": "Category",
+            "format": "text"
+          },
+          "qualifications.service": {
+            "label": "Service",
+            "format": "text"
+          },
+          "qualifications.natural_gas": {
+            "label": "Natural gas",
+            "format": "boolean"
+          },
+          "qualifications.lpg": {
+            "label": "LPG",
+            "format": "boolean"
+          },
+          "qualifications.building_regulations": {
+            "label": "Building regulations",
+            "format": "boolean"
+          },
+          "qualifications.is_group": {
+            "label": "Group heading",
+            "format": "boolean"
+          }
         }
       }
     }
