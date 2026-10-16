@@ -2,15 +2,15 @@
   "actorOutputSchemaVersion": 1,
   "title": "Gas Safe results",
   "properties": {
-    "dataset": {
-      "type": "string",
-      "title": "Businesses",
-      "template": "{{links.apiDefaultDatasetUrl}}/items"
-    },
     "report": {
       "type": "string",
       "title": "View readable results \u2014 businesses, engineers and qualifications",
       "template": "{{links.apiDefaultKeyValueStoreUrl}}/records/REPORT.html"
+    },
+    "dataset": {
+      "type": "string",
+      "title": "Businesses table",
+      "template": "{{links.apiDefaultDatasetUrl}}/items"
     },
     "businessesCsv": {
       "type": "string",
