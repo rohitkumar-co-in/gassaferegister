@@ -130,9 +130,9 @@ try {
     await persist();
     await Actor.setStatusMessage(`${summary.status.toUpperCase()}: ${records.length} businesses collected.${summary.error ? ` Reason: ${summary.error}.` : ''} Open Output for tables and spreadsheet downloads.`);
     const tables = resultTables(records);
-    await Actor.setValue('REPORT.html', renderReport(records, summary.status, summary.error), { contentType: 'text/html; charset=utf-8' });
+    await Actor.setValue('REPORT.html', renderReport(records, summary.status, summary.error), { contentType: 'text/html' });
     for (const [name, rows] of Object.entries(tables)) {
-        await Actor.setValue(`${name.toUpperCase()}.csv`, tableCsv(rows), { contentType: 'text/csv; charset=utf-8' });
+        await Actor.setValue(`${name.toUpperCase()}.csv`, tableCsv(rows), { contentType: 'text/csv' });
     }
 }
 await Actor.exit({ exitCode: summary.status === 'failed' ? 1 : 0 });

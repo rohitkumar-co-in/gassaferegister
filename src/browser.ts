@@ -11,6 +11,7 @@ import { selectTown, type SourcePage, type SourceSession } from './crawler.js';
 import { assertSource } from './details.js';
 import { dismissVisibleSourceDialogs, installSourceDialogHandlers } from './dialogs.js';
 import { BASE, officialUrl } from './parser.js';
+import { waitForSourceContent } from './readiness.js';
 import { prepareSourceLookup, prepareSourceSearch, sourceSearchButton, submitSourceSearch } from './search-controls.js';
 import { submitValidatedForm } from './search-form.js';
 
@@ -145,9 +146,7 @@ export async function createBrowserSession(input: Required<Input>, liveMetrics: 
         };
         const snapshot = async (): Promise<SourcePage> => { await check(); return { html: await page!.content(), url: page!.url() }; };
         const ready = async () => {
-            await page!.waitForFunction(() => Boolean(document.querySelector('.buscard,.show-engineers,#DomesticTable,#CommercialTable'))
-                || /Multiple matches were found|no (?:registered )?(?:businesses|engineers|results|matches) (?:were )?found|request unsuccessful|access denied/i.test(document.body.innerText),
-            undefined, { timeout: 12000 }).catch(() => { /* Best-effort cleanup or diagnostics. */ });
+            await waitForSourceContent(page!, 'detail', 12000).catch(() => { /* Snapshot parsing provides the final layout verdict. */ });
             await check();
         };
         return {
@@ -163,8 +162,7 @@ export async function createBrowserSession(input: Required<Input>, liveMetrics: 
                     // as a postcode and the site reports that no postcode was found.
                     await prepareSourceLookup(page!, registrationNumber);
                     await Promise.all([
-                        page!.waitForFunction(() => Boolean(document.querySelector('.buscard,[data-testid="registrationNumber"]'))
-                            || /no (?:registered )?(?:business|results|matches)|registration number.{0,30}(?:not found|invalid)|that (?:postcode|registration number).{0,40}(?:not found|not recognised)/i.test(document.body.innerText), undefined, { timeout: 20000 }),
+                        waitForSourceContent(page!, 'search', 20000),
                         (await sourceSearchButton(page!)).click(),
                     ]);
                     await check();
@@ -205,9 +203,7 @@ export async function createBrowserSession(input: Required<Input>, liveMetrics: 
                         await submitSourceSearch(page!);
                     };
                     await Promise.all([
-                        page!.waitForFunction(() => Boolean(document.querySelector('.buscard'))
-                            || /Multiple matches were found|no (?:registered )?(?:businesses|results|matches) (?:were )?found|request unsuccessful|access denied/i.test(document.body.innerText),
-                        undefined, { timeout: 30000 }).catch(async () => {
+                        waitForSourceContent(page!, 'search', 30000).catch(async () => {
                             await check();
                             throw new Error('SOURCE_SEARCH_DID_NOT_RETURN_RESULTS');
                         }),
