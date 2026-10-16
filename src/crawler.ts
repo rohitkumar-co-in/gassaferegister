@@ -56,13 +56,38 @@ export type Business = ReturnType<typeof parseBusinesses>['businesses'][number] 
     enrichment_error: string | null;
     engineers_truncated: boolean;
 };
+function normalizeTownText(value: string) {
+    return value.replace(/\s+/g, ' ').trim().toLocaleLowerCase('en-GB');
+}
+
+function parseTownOption(value: string, location: string) {
+    const text = value.replace(/\s+/g, ' ').trim();
+    const normalized = normalizeTownText(text);
+    const town = normalizeTownText(location);
+    if (normalized === town) return { text, county: '' };
+    const townPattern = location.trim().split(/\s+/).map((part) => part.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('\\s+');
+    const prefix = text.match(new RegExp(`^${townPattern}`, 'i'))?.[0];
+    if (!prefix) return null;
+    const remainder = text.slice(prefix.length);
+    // The register has rendered location labels with hyphens, en/em dashes,
+    // commas, and parenthesized counties. Also tolerate whitespace-only
+    // separators where accessible text joins adjacent elements.
+    if (!/^(?:\s|[-–—,|:(])/.test(remainder)) return null;
+    const countyName = remainder.replace(/^\s*(?:[-–—,|:]\s*|\(\s*)?/, '').replace(/\s*\)\s*$/, '').trim();
+    return { text, county: countyName };
+}
+
+/** Keep the source link indices while extracting all plausible town choices. */
+export function getTownOptions(matches: string[], location: string) {
+    return matches.map((text, index) => ({ text: text.replace(/\s+/g, ' ').trim(), index }))
+        .filter(({ text }) => parseTownOption(text, location) !== null);
+}
+
 export function selectTown(matches: string[], location: string, county: string): number {
-    const norm = (value: string) => value.replace(/\s+/g, ' ').trim().toLowerCase();
-    const candidates = matches.map((text, index) => ({ text, index })).filter(({ text }) => {
-        const [town, ...rest] = text.split(/\s+-\s+/);
-        return norm(town ?? '') === norm(location) && (!county || norm(rest.join(' - ')) === norm(county));
-    });
-    const unique = new Set(candidates.map(({ text }) => norm(text)));
+    const candidates = matches.map((text, index) => ({ text, index, parsed: parseTownOption(text, location) }))
+        .filter((match): match is typeof match & { parsed: NonNullable<typeof match.parsed> } => match.parsed !== null)
+        .filter(({ parsed }) => !county || normalizeTownText(parsed.county) === normalizeTownText(county));
+    const unique = new Set(candidates.map(({ text }) => normalizeTownText(text)));
     if (candidates.length && unique.size === 1) return candidates[0]!.index;
     throw new Error('SOURCE_AMBIGUOUS_LOCATION: provide locationCounty or a full postcode');
 }

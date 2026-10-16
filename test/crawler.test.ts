@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 
 import { validateInput } from '../src/config.js';
-import { crawl, getRunStatus, selectTown, visitWithBoundedRetry, type SourceSession } from '../src/crawler.js';
+import { crawl, getRunStatus, getTownOptions, selectTown, visitWithBoundedRetry, type SourceSession } from '../src/crawler.js';
 import { assertSource, parseEngineers, parseQualifications } from '../src/details.js';
 
 const fixture = (name: string) => readFileSync(new URL(`../fixtures/${name}`, import.meta.url), 'utf8');
@@ -156,6 +156,15 @@ describe('complete bounded workflow', () => {
         expect(() => selectTown(['Cambridge - CAMBRIDGESHIRE', 'Cambridge - GLOUCESTERSHIRE'], 'Cambridge', '')).toThrow('AMBIGUOUS');
         expect(selectTown(['Cambridge - CAMBRIDGESHIRE', 'Cambridge - CAMBRIDGESHIRE'], 'Cambridge', '')).toBe(0);
         expect(selectTown(['Cambridge - CAMBRIDGESHIRE', 'Cambridge - GLOUCESTERSHIRE'], 'Cambridge', 'Gloucestershire')).toBe(1);
+    });
+    it('reads London town choices across source label formats and preserves link indices', () => {
+        const labels = ['Other - COUNTY', '  London – GREATER LONDON  ', 'London (City of London)', 'Londonderry - COUNTY'];
+        expect(getTownOptions(labels, 'london')).toEqual([
+            { text: 'London – GREATER LONDON', index: 1 },
+            { text: 'London (City of London)', index: 2 },
+        ]);
+        expect(selectTown(['London – GREATER LONDON', 'London (City of London)'], 'LONDON', 'greater london')).toBe(0);
+        expect(selectTown(['London (City of London)'], 'London', 'City of London')).toBe(0);
     });
     it('accepts Town, County in the single public location field for ambiguous towns', () => {
         expect(validateInput({ location: ' London, Middlesex ' })).toMatchObject({ location: 'London', locationCounty: 'Middlesex' });

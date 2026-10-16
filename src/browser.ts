@@ -7,7 +7,7 @@ import { Actor } from 'apify';
 import { type Browser, type BrowserContext, chromium, type Page } from 'playwright';
 
 import { allowedCertificateExceptionUrl, type Input } from './config.js';
-import { selectTown, type SourcePage, type SourceSession } from './crawler.js';
+import { getTownOptions, selectTown, type SourcePage, type SourceSession } from './crawler.js';
 import { assertSource } from './details.js';
 import { dismissVisibleSourceDialogs, installSourceDialogHandlers } from './dialogs.js';
 import { BASE, officialUrl } from './parser.js';
@@ -211,20 +211,23 @@ export async function createBrowserSession(input: Required<Input>, liveMetrics: 
                     ]);
                     await ready();
                     if (/Multiple matches were found/i.test(await page!.locator('body').innerText())) {
-                        const links = page!.getByRole('link').filter({ hasText: /^\s*[^\n]+\s+-\s+[^\n]+\s*$/ });
-                        const names = await links.allTextContents();
+                        const links = page!.locator('a');
+                        const allNames = await links.allInnerTexts();
+                        const options = getTownOptions(allNames, location);
+                        const names = options.map(({ text }) => text);
                         let selected: number;
                         try {
                             selected = selectTown(names, location, county);
                         } catch (error) {
                             if (error instanceof Error && error.message.includes('SOURCE_AMBIGUOUS_LOCATION')) {
-                                const choices = names.filter((name) => name.toLowerCase().startsWith(`${location.toLowerCase()} - `));
-                                throw new Error(`SOURCE_AMBIGUOUS_LOCATION: ${choices.slice(0, 5).join('; ')}. Enter a full postcode or disambiguate as Town, County (for example, London, Middlesex).`);
+                                const choices = names.slice(0, 8).join('; ');
+                                if (choices) throw new Error(`SOURCE_AMBIGUOUS_LOCATION: ${choices}. Enter one exact option as Town, County, or use a full postcode.`);
+                                throw new Error(`SOURCE_AMBIGUOUS_LOCATION: The register returned multiple matches for "${location}" but its town choices could not be read. Enter a full postcode or try again later.`);
                             }
                             throw error;
                         }
                         await throttle();
-                        await links.nth(selected).click();
+                        await links.nth(options[selected]!.index).click();
                         await page!.locator('.buscard').first().waitFor({ timeout: 12000 }).catch(() => { /* Best-effort cleanup or diagnostics. */ });
                         await ready();
                     }
