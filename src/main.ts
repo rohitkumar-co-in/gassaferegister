@@ -9,6 +9,7 @@ import { type Business, crawl, getRunStatus, type LocationResult, type SourceSes
 import { classifyError } from './errors.js';
 import { httpProbe } from './http-probe.js';
 import { businessDisplay, renderReport, resultTables, tableCsv } from './presentation.js';
+import { chargeBusinessEnrichment } from './pricing.js';
 
 await Actor.init();
 const metrics: BrowserMetrics = { network_requests: 0, transferred_bytes: 0, browser_user_agent: '', limit: null };
@@ -89,7 +90,10 @@ try {
         onRetry() { summary.retry_count++; },
         async record(record) {
             await Actor.pushData(businessDisplay(record));
+            const { chargedEvents, limitReachedEvents } = await chargeBusinessEnrichment(charging, record, input);
             records.push(record);
+            if (chargedEvents.length) log.info(`Charged optional details: ${chargedEvents.join(', ')} for ${record.registration_number}`);
+            if (limitReachedEvents.length) log.warning(`Run charge limit prevented billing optional details for ${record.registration_number}: ${limitReachedEvents.join(', ')}`);
             await Actor.setStatusMessage(`Collected ${records.length} of up to ${input.maxResults} businesses. Engineer extraction: ${record.enrichment_status}.`);
             await persist();
         },

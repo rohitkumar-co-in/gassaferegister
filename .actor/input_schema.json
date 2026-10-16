@@ -28,26 +28,8 @@
       "maximum": 250,
       "description": "Maximum unique businesses to return, deduplicated by registration number. The Actor automatically reads enough listing pages (about 10 businesses per page) to reach this count, up to 250."
     },
-    "useUkResidentialProxy": { "title": "Use UK residential proxy", "description": "Route source requests through the configured UK residential proxy.", "type": "boolean", "default": true, "editor": "hidden" },
-    "browserProfile": { "title": "Browser profile", "description": "Managed browser profile for source compatibility.", "type": "string", "default": "patchrightHeaded", "editor": "hidden" },
-    "proxyService": { "title": "Proxy service", "description": "Managed proxy service.", "type": "string", "default": "residential", "editor": "hidden" },
-    "allowUnblockerCertificateException": { "title": "Allow isolated Unblocker certificate exception", "description": "Disabled unless explicitly enabled for an isolated diagnostic.", "type": "boolean", "default": false, "editor": "hidden" },
-    "loadPageAssets": { "title": "Load page assets", "description": "Load optional images, media, and fonts.", "type": "boolean", "default": false, "editor": "hidden" },
-    "settleSeconds": { "title": "Homepage settling time", "description": "Wait for homepage scripts before starting a search.", "type": "integer", "default": 5, "editor": "hidden" },
-    "proxyCountry": { "title": "Proxy country", "description": "Country used for proxy routing.", "type": "string", "default": "GB", "editor": "hidden" },
-    "locations": { "title": "Towns or postcodes", "description": "Optional internal multi-location input.", "type": "array", "default": [], "editor": "hidden" },
-    "locationCounty": { "title": "County for ambiguous towns", "description": "Optional county used to resolve an ambiguous town.", "type": "string", "default": "", "editor": "hidden" },
-    "page": { "title": "First listing page", "description": "First result page to read.", "type": "integer", "default": 1, "editor": "hidden" },
-    "maxPages": { "title": "Listing pages per location", "description": "Internal safety ceiling; the result-count limit stops the crawl earlier. API callers may supply a lower cap.", "type": "integer", "default": 25, "editor": "hidden" },
-    "includeEngineers": { "title": "Include engineers", "description": "Collect engineer names, status and public contact details. Turn off for a faster business-only search.", "type": "boolean", "default": true },
-    "includeQualifications": { "title": "Include qualifications", "description": "Collect Natural gas, LPG and Building regulations qualifications. Requires Include engineers; adds time and cost.", "type": "boolean", "default": true },
-    "maxEngineerPages": { "title": "Engineer pages per business", "description": "Maximum engineer listing pages to read per business.", "type": "integer", "default": 10, "editor": "hidden" },
-    "maxEngineersPerBusiness": { "title": "Engineers per business", "description": "Maximum engineers to include per business.", "type": "integer", "default": 100, "editor": "hidden" },
-    "requestDelayMillis": { "title": "Navigation delay (ms)", "description": "Minimum delay between top-level browser navigations.", "type": "integer", "default": 1000, "editor": "hidden" },
-    "searchMethod": { "title": "Search form compatibility", "description": "Managed form submission method.", "type": "string", "default": "siteUi", "editor": "hidden" },
-    "mode": { "title": "Mode", "description": "Internal operating mode.", "type": "string", "default": "scrape", "editor": "hidden" },
-    "operation": { "title": "API operation", "description": "API-only value: searchBusinesses, searchBusinessesBasic, getBusinessEngineers, or the equivalent snake_case endpoint name.", "type": "string", "default": "searchBusinesses", "editor": "hidden" },
-    "registrationNumber": { "title": "Business registration number", "description": "Required only for the getBusinessEngineers API operation.", "type": "string", "default": "", "editor": "hidden" }
+    "includeEngineers": { "title": "Include engineers", "description": "Collect public engineer names, status and contact details.", "type": "boolean", "default": true },
+    "includeQualifications": { "title": "Include qualifications", "description": "Collect Natural gas, LPG and Building regulations qualifications. Requires Include engineers.", "type": "boolean", "default": true }
   },
   "required": []
 }

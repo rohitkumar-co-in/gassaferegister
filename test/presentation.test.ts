@@ -11,6 +11,7 @@ it('sizes GUI resource ceilings above the measured 20-business workload while ho
     expect(input.maxTransferMegabytes).toBeGreaterThan(58);
     expect(validateInput({ maxResults: 20, maxRuntimeSeconds: 60 }).maxRuntimeSeconds).toBe(60);
     const schema = JSON.parse(readFileSync(new URL('../.actor/input_schema.json', import.meta.url), 'utf8'));
+    expect(Object.keys(schema.properties).sort()).toEqual(['includeEngineers', 'includeQualifications', 'location', 'maxResults', 'serviceType'].sort());
     const guiInput = Object.fromEntries(Object.entries(schema.properties).filter(([, p]) => (p as {default?: unknown}).default !== undefined)
         .map(([k, p]) => [k, (p as {default: unknown}).default]));
     expect(validateInput(guiInput)).toEqual(validateInput({}));
