@@ -181,6 +181,13 @@ describe('complete bounded workflow', () => {
         expect(parseEngineers(original.replace("window.location='/engineerabcompetencies/123?synthetic=1'", 'alert(1)')).engineers[0]?.qualifications_url).toBeNull();
         expect(() => parseQualifications('<html>Unexpected page</html>')).toThrow('UNRECOGNIZED');
     });
+    it('normalizes the source punctuation in engineer service labels and removes duplicates', () => {
+        const original = fixture('engineers.html').replace(
+            '<span data-testid=" servicesProvidedDome">Domestic</span>',
+            '<span data-testid=" servicesProvidedDome">Domestic</span><span data-testid="servicesProvidedComm">&amp; Commercial</span><span data-testid="servicesProvidedComm">&amp; Commercial</span>',
+        );
+        expect(parseEngineers(original).engineers[0]?.services).toEqual(['Domestic', 'Commercial']);
+    });
     it('detects the source bot challenge even when Imperva responds with HTTP 200', () => {
         expect(() => assertSource('<main>Pardon Our Interruption. Something about your browser made us think you were a bot.</main>'))
             .toThrow('SOURCE_BLOCKED');

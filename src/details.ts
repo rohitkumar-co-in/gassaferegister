@@ -3,6 +3,7 @@ import { load } from 'cheerio';
 import { officialUrl } from './parser.js';
 
 const clean = (text: string) => text.replace(/\s+/g, ' ').trim();
+const cleanService = (text: string) => clean(text).replace(/^&\s*/, '').trim();
 const nullable = (text: string) => /^(?:n\/a|-|none)$/i.test(text) || !text ? null : text;
 export interface Qualification {
     category: string;
@@ -46,8 +47,9 @@ export function parseEngineers(html: string) {
             status += $(node).text();
             node = node.nextSibling;
         }
-        return { name, services: card.find('[data-testid]').filter((_, el) => ($(el).attr('data-testid') ?? '').trim().startsWith('servicesProvided'))
-            .toArray().map((el) => clean($(el).text())).filter(Boolean),
+        const services = [...new Set(card.find('[data-testid]').filter((_, el) => ($(el).attr('data-testid') ?? '').trim().startsWith('servicesProvided'))
+            .toArray().map((el) => cleanService($(el).text())).filter(Boolean))];
+        return { name, services,
         status: nullable(clean(status)), telephone: nullable(clean(card.find('[data-testid="telephone"]').text())),
         qualifications_url: href ? officialUrl(href) : null, qualifications: [], qualifications_status: 'not_requested', error: null };
     });
