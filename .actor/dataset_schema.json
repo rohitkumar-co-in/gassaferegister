@@ -341,12 +341,9 @@
         "unwind": [
           "engineers"
         ],
-        "flatten": [
-          "engineers"
-        ],
         "omit": [
-          "engineers.qualifications",
-          "engineers.qualifications_url"
+          "qualifications",
+          "qualifications_url"
         ]
       },
       "display": {
@@ -360,27 +357,27 @@
             "label": "Business registration",
             "format": "text"
           },
-          "engineers.name": {
+          "name": {
             "label": "Engineer",
             "format": "text"
           },
-          "engineers.status": {
+          "status": {
             "label": "Status",
             "format": "text"
           },
-          "engineers.telephone": {
+          "telephone": {
             "label": "Phone",
             "format": "text"
           },
-          "engineers.services": {
+          "services": {
             "label": "Services",
             "format": "array"
           },
-          "engineers.qualifications_status": {
+          "qualifications_status": {
             "label": "Qualification extraction",
             "format": "text"
           },
-          "engineers.error": {
+          "error": {
             "label": "Error",
             "format": "text"
           }
@@ -397,9 +394,6 @@
         ],
         "unwind": [
           "qualifications"
-        ],
-        "flatten": [
-          "qualifications"
         ]
       },
       "display": {
@@ -413,31 +407,31 @@
             "label": "Business registration",
             "format": "text"
           },
-          "qualifications.engineer_name": {
+          "engineer_name": {
             "label": "Engineer",
             "format": "text"
           },
-          "qualifications.category": {
+          "category": {
             "label": "Category",
             "format": "text"
           },
-          "qualifications.service": {
+          "service": {
             "label": "Service",
             "format": "text"
           },
-          "qualifications.natural_gas": {
+          "natural_gas": {
             "label": "Natural gas",
             "format": "boolean"
           },
-          "qualifications.lpg": {
+          "lpg": {
             "label": "LPG",
             "format": "boolean"
           },
-          "qualifications.building_regulations": {
+          "building_regulations": {
             "label": "Building regulations",
             "format": "boolean"
           },
-          "qualifications.is_group": {
+          "is_group": {
             "label": "Group heading",
             "format": "boolean"
           }
