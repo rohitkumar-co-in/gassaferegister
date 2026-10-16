@@ -5,7 +5,7 @@
     "dataset": {
       "type": "string",
       "title": "Businesses",
-      "template": "{{links.apiDefaultDatasetUrl}}/items?format=html&view=overview"
+      "template": "{{links.apiDefaultDatasetUrl}}/items"
     },
     "report": {
       "type": "string",
